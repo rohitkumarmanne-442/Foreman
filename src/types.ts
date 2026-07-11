@@ -1,0 +1,100 @@
+/** A single journaled event. One JSON object per line in ~/.foreman/events/*.jsonl */
+export interface ForemanEvent {
+  v: 1;
+  id: string;
+  ts: string; // ISO 8601
+  agent: string; // "claude-code" | "mcp-proxy" | future agents
+  session: string; // agent session id, or proxy run id
+  cwd: string;
+  kind:
+    | "pre_tool" // snapshot before a mutating tool runs (Write)
+    | "tool" // a tool the agent executed
+    | "session_end" // agent finished its turn/session
+    | "mcp_call" // one attested MCP tool call (receipt)
+    | "mcp_drift"; // tool list / description changed vs trusted baseline
+  data: Record<string, unknown>;
+}
+
+export interface PreToolData {
+  tool: string;
+  file?: string;
+  exists?: boolean;
+  lines?: number;
+}
+
+export interface ToolData {
+  tool: string;
+  ok: boolean;
+  file?: string;
+  lines_after?: number;
+  command?: string;
+  description?: string;
+}
+
+export interface SessionEndData {
+  transcript?: string;
+  last_message?: string;
+  claims: string[];
+}
+
+export interface McpCallData {
+  server: string;
+  method: string;
+  tool?: string;
+  params_hash: string;
+  result_hash: string;
+  ms: number;
+  ok: boolean;
+  receipt_id: string;
+  sig: string; // base64 ed25519 signature over canonical receipt body
+  pk: string; // base64 SPKI public key
+}
+
+export interface McpDriftData {
+  server: string;
+  baseline_hash: string;
+  current_hash: string;
+  added: string[];
+  removed: string[];
+  changed: string[]; // tools whose description/schema changed
+}
+
+export interface Finding {
+  rule: string;
+  severity: 1 | 2 | 3 | 4; // 1 info, 2 medium, 3 high, 4 critical
+  detail: string;
+}
+
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+
+export interface FileTouch {
+  path: string;
+  action: "write" | "edit";
+  lines_before?: number;
+  lines_after?: number;
+}
+
+export interface CommandRun {
+  command: string;
+  ok: boolean;
+  verification: boolean; // looks like a test/build/run command
+}
+
+export interface ReviewCard {
+  session: string;
+  agent: string;
+  cwd: string;
+  started: string;
+  ended?: string;
+  open: boolean; // no session_end seen yet
+  files: FileTouch[];
+  commands: CommandRun[];
+  claims: string[];
+  verified_claims: boolean; // claims backed by at least one passing verification
+  findings: Finding[];
+  score: number; // 0-100
+  level: RiskLevel;
+  mcp_calls: number;
+  mcp_drifts: number;
+  last_message?: string;
+}

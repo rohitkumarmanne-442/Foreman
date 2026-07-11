@@ -1,0 +1,44 @@
+{
+  "name": "foremanjs",
+  "version": "0.1.0",
+  "description": "Foreman — the review inbox for your AI workforce. Risk-ranked review cards for every agent session, with signed MCP receipts proving what tools actually did.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "foreman": "dist/cli.js"
+  },
+  "main": "dist/cli.js",
+  "files": [
+    "dist",
+    "ui",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test dist/test/",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rohitkumarmanne-442/foreman.git"
+  },
+  "keywords": [
+    "ai-agents",
+    "code-review",
+    "human-in-the-loop",
+    "mcp",
+    "attestation",
+    "claude-code",
+    "cursor",
+    "verification",
+    "agent-safety"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.9.0",
+    "typescript": "^5.6.3"
+  }
+}
