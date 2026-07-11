@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rohitkumarmanne-442/foreman.git"
+    "url": "git+https://github.com/rohitkumarmanne-442/foreman.git"
   },
   "keywords": [
     "ai-agents",
