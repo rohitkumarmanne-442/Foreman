@@ -21,8 +21,8 @@ const HELP = `
   🧑‍🏭 foreman — the review inbox for your AI workforce
 
   GET STARTED
-    foreman init [--agent claude|cursor|all] [--global]
-                                 install hooks (default: all agents, this repo)
+    foreman init [--agent claude|cursor|gemini|opencode|all] [--global]
+                                 install native hooks (default: all agents, this repo)
     foreman ui [--port 4517]     open the review inbox (127.0.0.1 only)
     foreman run [--name codex] -- <agent command...>
                                  supervise ANY terminal agent (Codex, Gemini, Copilot, aider…)
@@ -78,7 +78,10 @@ async function main(): Promise<void> {
     const agent = cmd === "ingest" ? "generic" : process.argv[3];
     if (agent === "claude-code") await handleClaudeCodeHook();
     else if (agent === "cursor") await handleCursorHook();
-    else if (agent === "codex") {
+    else if (agent === "gemini") {
+      const { handleGeminiHook } = await import("./hooks/gemini.js");
+      await handleGeminiHook();
+    } else if (agent === "codex") {
       const { handleCodexNotify } = await import("./hooks/codex.js");
       await handleCodexNotify();
     } else if (agent === "generic") {
@@ -207,8 +210,16 @@ async function main(): Promise<void> {
     if (agent === "cursor" || agent === "all") {
       installed.push(`Cursor      → ${installCursorHooks({ global: isGlobal })}`);
     }
+    if (agent === "gemini" || agent === "all") {
+      const { installGeminiHooks } = await import("./hooks/gemini.js");
+      installed.push(`Gemini CLI  → ${installGeminiHooks({ global: isGlobal })}`);
+    }
+    if (agent === "opencode" || agent === "all") {
+      const { installOpenCodeAdapter } = await import("./hooks/opencode.js");
+      installed.push(`OpenCode    → ${installOpenCodeAdapter({ global: isGlobal })}`);
+    }
     if (!installed.length) {
-      console.error(`Unknown agent "${agent}". Use: claude | cursor | all`);
+      console.error(`Unknown agent "${agent}". Use: claude | cursor | gemini | opencode | all`);
       process.exit(1);
     }
     console.log(`✅ Foreman hooks installed for ${isGlobal ? "ALL repos" : "this repo"}:\n`);
@@ -220,10 +231,16 @@ async function main(): Promise<void> {
   }
 
   if (cmd === "uninstall") {
-    const a = uninstallClaudeCodeHooks({ global: isGlobal });
-    const b = uninstallCursorHooks({ global: isGlobal });
+    const { uninstallGeminiHooks } = await import("./hooks/gemini.js");
+    const { uninstallOpenCodeAdapter } = await import("./hooks/opencode.js");
+    const removed = [
+      uninstallClaudeCodeHooks({ global: isGlobal }),
+      uninstallCursorHooks({ global: isGlobal }),
+      uninstallGeminiHooks({ global: isGlobal }),
+      uninstallOpenCodeAdapter({ global: isGlobal }),
+    ].some(Boolean);
     console.log(
-      a || b
+      removed
         ? `✅ Foreman hooks removed (${isGlobal ? "user level" : "this repo"}). Your journal in ${FOREMAN_HOME} is untouched.`
         : "No Foreman hooks found to remove."
     );

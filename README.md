@@ -7,7 +7,7 @@
 *Your agents say "done." Foreman says "prove it."*
 
 [![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs)
-[![tests](https://img.shields.io/badge/tests-21%2F21_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts)
+[![tests](https://img.shields.io/badge/tests-26%2F26_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org)
 [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent)
 [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design)
@@ -50,19 +50,21 @@ Foreman is an observer, so the only numbers that matter are the ones it costs yo
 - **0 tokens.** Foreman never touches your prompts or your model bill. (One exception, and you opt into it: flagged-session notes are injected as context — that's the point.)
 - **~120 ms per hook event** — median of 15 cold runs on an ordinary Windows laptop, and nearly all of it is Node process startup, not work. Hooks journal and exit; they cannot block, break, or slow your agent's reasoning.
 - **What the rules catch:** 21 destructive-command patterns, 14 secret formats, mass rewrites (both whole-file and single-edit), sensitive paths, failed-then-claimed-success, and MCP tool-definition drift. Every check runs on the record of what the agent *did* — never on vibes.
-- **21/21 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, and a real headless session producing a critical card.
+- **26/26 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, and a real headless session producing a critical card.
 
 No benchmark theater: an observer can't make your agent faster or cheaper. It makes *you* faster — you spend ten minutes on the dangerous session and ten seconds on the README fix, instead of equal time skimming both.
 
 ## How it works
 
 ```text
-Claude Code hooks ─┐
-Cursor hooks ──────┤
-Codex notify ──────┤                         ┌─→ review cards, risk-ranked → inbox (foreman ui)
-foreman run ───────┼─→ ~/.foreman/*.jsonl ───┼─→ flags & notes → back into the agent (foreman brief)
-foreman watch ─────┤    append-only journal  ├─→ CI gate (foreman gate)
-foreman wrap ──────┘                         └─→ audit report (foreman report)
+Claude Code hooks ──┐
+Cursor hooks ───────┤
+Gemini CLI hooks ───┤
+OpenCode plugin ────┤                         ┌─→ review cards, risk-ranked → inbox (foreman ui)
+Codex notify ───────┼─→ ~/.foreman/*.jsonl ───┼─→ flags & notes → back into the agent (foreman brief)
+foreman run ────────┤    append-only journal  ├─→ CI gate (foreman gate)
+foreman watch ──────┤                         └─→ audit report (foreman report)
+foreman wrap ───────┘
      └─ ed25519-signed, hash-chained receipts + tool fingerprints
 ```
 
@@ -102,13 +104,35 @@ Adds Foreman to `.cursor/hooks.json`: shell commands, file edits, MCP calls, and
 </details>
 
 <details>
-<summary><b>Codex CLI, Gemini CLI, Copilot CLI, aider — any terminal agent</b></summary>
+<summary><b>Gemini CLI</b> — native hooks, feedback loop included</summary>
+
+```bash
+cd your-project
+foreman init
+```
+
+Adds Foreman to `.gemini/settings.json` per the [Gemini CLI hooks reference](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md): shell commands, file writes/edits, and session ends all become card data — and your outstanding flags are injected as context on `SessionStart`, so Gemini gets the same feedback loop as Claude Code. `--agent gemini` installs for Gemini only.
+</details>
+
+<details>
+<summary><b>OpenCode</b> — native plugin</summary>
+
+```bash
+cd your-project
+foreman init
+```
+
+Drops a plugin into `.opencode/plugins/` (auto-loaded per the [OpenCode plugin API](https://opencode.ai/docs/plugins/)) that translates bash/edit/write events onto `foreman ingest`. `--agent opencode` installs for OpenCode only; `--global` uses `~/.config/opencode/plugins/`.
+</details>
+
+<details>
+<summary><b>Codex CLI, Copilot CLI, aider — any terminal agent</b></summary>
 
 Launch the agent through Foreman. Its TTY is untouched; the card closes when it exits:
 
 ```bash
 foreman run --name codex -- codex
-foreman run --name gemini -- gemini
+foreman run --name copilot -- copilot
 foreman run --name aider -- aider
 ```
 
@@ -199,13 +223,19 @@ foreman pr --print            # print the markdown — paste it anywhere (GitLab
 
 The inbox has the same thing as a **📋 PR comment** button on every card. Approved cards say so; flagged cards carry your note. Your PR reviews start from evidence, not vibes.
 
-## Live in your tray
+## Live in your menu bar
 
 ```bash
-foreman tray                  # Windows — macOS/Linux menu-bar builds on the roadmap
+foreman tray                  # Windows · macOS · Linux
 ```
 
-Runs the inbox server headless with a system-tray icon: the tooltip live-counts sessions needing review, a balloon pops when a **new critical card** appears, left-click opens the inbox, and Exit shuts it all down. Zero dependencies — it's a WinForms NotifyIcon.
+Runs the inbox server headless with a presence in your bar, everywhere:
+
+- **Windows** — a real tray icon (WinForms NotifyIcon): live tooltip counts, balloon on new critical cards, click to open, Exit to stop.
+- **macOS** — Foreman writes an [xbar](https://xbarapp.com)/SwiftBar plugin that puts 🧑‍🏭 with live counts in your actual menu bar (top sessions in the dropdown, click-through to the inbox), plus native notifications via `osascript` for new critical cards.
+- **Linux** — a tray icon via `yad` when installed, `notify-send` critical-card notifications either way.
+
+Zero npm dependencies on every platform.
 
 ## MCP attestation: make tool calls provable
 
@@ -230,14 +260,14 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 
 | Command | What it does |
 |---|---|
-| `foreman init [--agent claude\|cursor\|all] [--global]` | install hooks for this repo (or everywhere) |
+| `foreman init [--agent claude\|cursor\|gemini\|opencode\|all] [--global]` | install native hooks for this repo (or everywhere) |
 | `foreman ui [--port 4517]` | open the review inbox |
 | `foreman run [--name X] -- <cmd…>` | supervise any terminal agent for one session |
 | `foreman watch [path]` | watch a repo continuously — any IDE, any tool |
 | `foreman brief [path]` | print outstanding human flags (agents read this) |
 | `foreman gate [--level high\|critical]` | exit 1 while unapproved risky sessions exist |
 | `foreman pr [--pr N] [--session id] [--print]` | post a session-evidence comment on the PR |
-| `foreman tray` | system-tray inbox with critical-card balloons (Windows) |
+| `foreman tray` | menu-bar/tray inbox with critical-card alerts (Win/macOS/Linux) |
 | `foreman ingest` | journal normalized JSON events from any tool (stdin) |
 | `foreman wrap --name <srv> -- <cmd…>` | attest an MCP server |
 | `foreman trust <srv>` | re-baseline a server's tool definitions |
@@ -348,10 +378,10 @@ Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML fil
 - [x] Feedback loop — flag notes injected into the agent's next session
 - [x] Hash-linked receipt chains · team packs · CI gate · critical-card notifications
 - [x] PR write-back — `foreman pr` posts the session's evidence on the pull request
-- [x] System-tray inbox (`foreman tray`, Windows) with critical-card balloons
 - [x] Generic adapter API (`foreman ingest`) — any tool becomes an adapter in 20 lines
-- [ ] Native hook adapters as more agents ship hook APIs (built on `foreman ingest`)
-- [ ] macOS/Linux menu-bar builds
+- [x] Native adapters: Claude Code · Cursor · **Gemini CLI** · **OpenCode** · Codex notify
+- [x] Menu-bar/tray on **Windows, macOS (xbar/SwiftBar), and Linux (yad)** with critical-card alerts
+- [ ] More native adapters as more agents ship hook APIs (each is a thin layer on `foreman ingest`)
 
 ## License
 

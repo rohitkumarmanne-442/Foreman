@@ -468,3 +468,161 @@ test("generic ingest: any tool becomes an adapter via JSONL", async () => {
   assert.ok(card.claims.length >= 1, "claims extracted from end message");
   assert.equal(card.commands[0].verification, true);
 });
+
+function runNamedHook(agent: string, payload: unknown, extraEnv: Record<string, string> = {}): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    const p = spawn(process.execPath, [CLI, "hook", agent], {
+      env: { ...process.env, FOREMAN_HOME: TMP, ...extraEnv },
+    });
+    let out = "";
+    p.stdout.on("data", (d) => (out += d.toString()));
+    p.stdin.write(JSON.stringify(payload));
+    p.stdin.end();
+    p.on("exit", (code) => resolve({ code: code ?? 0, out }));
+  });
+}
+
+test("gemini adapter: BeforeTool/AfterTool/SessionEnd → card with risk", async () => {
+  const session = "gemini-sess-1";
+  const bigFile = path.join(TMP, "gem.py");
+  fs.writeFileSync(bigFile, Array.from({ length: 150 }, (_, i) => `g${i}`).join("\n"));
+
+  await runNamedHook("gemini", {
+    session_id: session, cwd: TMP, hook_event_name: "BeforeTool",
+    tool_name: "write_file", tool_input: { file_path: bigFile },
+  });
+  await runNamedHook("gemini", {
+    session_id: session, cwd: TMP, hook_event_name: "AfterTool",
+    tool_name: "write_file", tool_input: { file_path: bigFile, content: "tiny" },
+    tool_response: { llmContent: "ok", error: null },
+  });
+  await runNamedHook("gemini", {
+    session_id: session, cwd: TMP, hook_event_name: "AfterTool",
+    tool_name: "run_shell_command", tool_input: { command: "pytest -q" },
+    tool_response: { error: null },
+  });
+  const t = path.join(TMP, "gem-transcript.json");
+  fs.writeFileSync(t, JSON.stringify({ messages: [{ role: "model", text: "Refactored the module and all tests pass." }] }));
+  const end = await runNamedHook("gemini", {
+    session_id: session, cwd: TMP, hook_event_name: "SessionEnd", transcript_path: t, reason: "exit",
+  });
+  assert.equal(end.code, 0);
+  assert.doesNotThrow(() => JSON.parse(end.out), "stdout is pure JSON (Gemini requirement)");
+
+  const { buildCards } = await import("../cards.js");
+  const card = buildCards().find((c) => c.session === session)!;
+  assert.ok(card, "gemini card exists");
+  assert.equal(card.agent, "gemini");
+  assert.ok(card.findings.some((f) => f.rule === "mass_rewrite"), "150→1 write flagged");
+  assert.equal(card.commands[0].verification, true, "pytest recognized");
+  assert.ok(card.claims.length >= 1, "claims parsed from transcript");
+});
+
+test("gemini adapter: SessionStart injects the brief for flagged repos", async () => {
+  const { setReview } = await import("../reviews.js");
+  setReview("gemini-sess-1", "flagged", "Do not gut gem.py again.");
+  const res = await runNamedHook("gemini", {
+    session_id: "gemini-sess-2", cwd: TMP, hook_event_name: "SessionStart", source: "startup",
+  });
+  const parsed = JSON.parse(res.out);
+  assert.ok(parsed.hookSpecificOutput?.additionalContext?.includes("Do not gut gem.py again."), "note injected as additionalContext");
+  setReview("gemini-sess-1", "pending");
+});
+
+test("opencode plugin: events flow through foreman ingest to a card", async () => {
+  const { installOpenCodeAdapter } = await import("../hooks/opencode.js");
+  const proj = fs.mkdtempSync(path.join(os.tmpdir(), "foreman-oc-"));
+  const prevCwd = process.cwd();
+  process.chdir(proj);
+  const installedAt = installOpenCodeAdapter({ global: false });
+  process.chdir(prevCwd);
+  assert.ok(installedAt.includes(".opencode"), "plugin lands in .opencode/plugins/");
+
+  process.env.FOREMAN_BIN = `"${process.execPath}" "${CLI}"`;
+  const { ForemanPlugin } = await import(`file:///${installedAt.split("\\").join("/")}`);
+  const hooks = await ForemanPlugin({ directory: proj });
+
+  await hooks["tool.execute.before"]({ tool: "bash", sessionID: "oc1", callID: "c1" }, { args: { command: "npm test" } });
+  await hooks["tool.execute.after"]({ tool: "bash", sessionID: "oc1", callID: "c1" }, { output: "all green" });
+  await hooks["tool.execute.before"]({ tool: "edit", sessionID: "oc1", callID: "c2" }, {
+    args: { filePath: "src/pay.ts", oldString: Array.from({ length: 80 }, () => "x").join("\n"), newString: "y" },
+  });
+  await hooks["tool.execute.after"]({ tool: "edit", sessionID: "oc1", callID: "c2" }, { output: "" });
+  await hooks["event"]({ event: { type: "session.idle" } });
+  delete process.env.FOREMAN_BIN;
+
+  const { buildCards } = await import("../cards.js");
+  const card = buildCards().find((c) => c.session === "opencode-oc1")!;
+  assert.ok(card, "opencode card exists");
+  assert.equal(card.agent, "opencode");
+  assert.equal(card.open, false, "session.idle closed the card");
+  assert.equal(card.commands[0].verification, true);
+  assert.ok(card.findings.some((f) => f.rule === "mass_rewrite"), "80→1 edit pair flagged");
+});
+
+test("tray: mode dispatch + generated artifacts", async () => {
+  const { getTrayMode, buildXbarPlugin, buildNotifyArgs, buildYadArgs } = await import("../tray.js");
+  assert.equal(getTrayMode("win32", {}), "winforms");
+  assert.equal(getTrayMode("darwin", { xbarDir: "/x" }), "xbar");
+  assert.equal(getTrayMode("darwin", { xbarDir: null }), "notify");
+  assert.equal(getTrayMode("linux", { hasYad: true }), "yad");
+  assert.equal(getTrayMode("linux", { hasYad: false }), "notify");
+
+  const plugin = buildXbarPlugin(4517);
+  assert.ok(plugin.startsWith("#!/usr/bin/env node"), "xbar plugin is a node script");
+  assert.ok(plugin.includes("127.0.0.1:4517/api/cards"), "polls the local API");
+  assert.ok(plugin.includes("🧑‍🏭"), "menu-bar glyph present");
+  assert.ok(plugin.includes("href=http://127.0.0.1:4517"), "click opens inbox");
+
+  const mac = buildNotifyArgs("darwin", 'T"t', 'M"m');
+  assert.equal(mac[0], "osascript");
+  assert.ok(!mac[2].includes('"t'), "double quotes sanitized for osascript");
+  const linux = buildNotifyArgs("linux", "T", "M");
+  assert.equal(linux[0], "notify-send");
+
+  const yad = buildYadArgs(4517);
+  assert.ok(yad.includes("--notification"));
+  assert.ok(yad.some((a) => a.includes("xdg-open http://127.0.0.1:4517")));
+});
+
+test("cli smoke: report/config/status/uninstall round-trip", async () => {
+  const cli = (args: string[], cwd?: string): Promise<{ code: number; out: string }> =>
+    new Promise((resolve) => {
+      const p = spawn(process.execPath, [CLI, ...args], {
+        env: { ...process.env, FOREMAN_HOME: TMP }, cwd: cwd ?? process.cwd(),
+      });
+      let out = "";
+      p.stdout.on("data", (d) => (out += d.toString()));
+      p.stderr.on("data", (d) => (out += d.toString()));
+      p.on("exit", (code) => resolve({ code: code ?? 0, out }));
+    });
+
+  const reportFile = path.join(TMP, "audit.md");
+  const rep = await cli(["report", "--out", reportFile]);
+  assert.equal(rep.code, 0);
+  assert.ok(fs.readFileSync(reportFile, "utf8").includes("Foreman audit report"));
+
+  const cfg = await cli(["config"]);
+  assert.equal(cfg.code, 0);
+  assert.ok(cfg.out.includes("mass_rewrite_min_lines"));
+
+  const st = await cli(["status"]);
+  assert.equal(st.code, 0);
+  assert.ok(st.out.includes("session(s)"));
+
+  // init all four agents in a temp project, then uninstall cleans every one
+  const proj = fs.mkdtempSync(path.join(os.tmpdir(), "foreman-init-"));
+  const init = await cli(["init"], proj);
+  assert.equal(init.code, 0);
+  for (const f of [".claude/settings.json", ".cursor/hooks.json", ".gemini/settings.json", ".opencode/plugins/foreman.mjs"]) {
+    assert.ok(fs.existsSync(path.join(proj, f)), `${f} installed`);
+  }
+  const un = await cli(["uninstall"], proj);
+  assert.equal(un.code, 0);
+  assert.ok(un.out.includes("removed"));
+  assert.ok(!fs.existsSync(path.join(proj, ".opencode/plugins/foreman.mjs")), "opencode plugin removed");
+  const claude = JSON.parse(fs.readFileSync(path.join(proj, ".claude/settings.json"), "utf8"));
+  assert.ok(!claude.hooks, "claude hooks removed");
+  const gemini = JSON.parse(fs.readFileSync(path.join(proj, ".gemini/settings.json"), "utf8"));
+  assert.ok(!gemini.hooks, "gemini hooks removed");
+});
