@@ -167,6 +167,8 @@ foreman ui        # → http://127.0.0.1:4517
 
 Keyboard-first: `j`/`k` navigate · `a` approve · `f` flag · `/` search · `?` help.
 
+**New here?** Your first visit starts a **60-second guided tour** that spotlights every option on the screen — what the risk score means, how claims-vs-evidence works, where flags go. Relaunch it anytime from the `?` help menu.
+
 ## The feedback loop: flagging teaches the agent
 
 Approving is half the job. **Flagging closes the loop.** Flag a session and attach a note — *"Never force-push. Restore app.py and make surgical edits."* From then on:
