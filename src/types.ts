@@ -106,6 +106,10 @@ export interface ReviewCard {
   last_activity: string;
   /** true when the agent kept working after the card was approved — approval no longer covers the new work */
   reopened?: boolean;
+  /** the approval watermark: everything up to this ts has been reviewed (set when reopened) */
+  reviewed_until?: string;
+  /** how many tool events (edits + commands) landed after the watermark */
+  new_changes?: number;
   files: FileTouch[];
   commands: CommandRun[];
   claims: string[];

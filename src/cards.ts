@@ -103,7 +103,9 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
       cwd: first.cwd,
       started: first.ts,
       ended: end?.ts,
-      open: !end,
+      // Claude Code fires a session_end at every turn — the session is only
+      // truly closed when nothing has happened since the last one
+      open: list[list.length - 1].kind !== "session_end",
       last_activity: list[list.length - 1].ts,
       files,
       commands,
@@ -123,10 +125,14 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
     const r = reviews[c.session];
     c.review = r?.status ?? "pending";
     if (r?.note) c.review_note = r.note;
-    // an approval only covers the work the human actually saw — new events void it
+    // an approval is a watermark: it covers the work up to its ts, nothing after
     if (c.review === "approved" && r?.ts && c.last_activity > r.ts) {
       c.review = "pending";
       c.reopened = true;
+      c.reviewed_until = r.ts;
+      c.new_changes = (bySession.get(c.session) ?? []).filter(
+        (e) => e.ts > r.ts && e.kind === "tool"
+      ).length;
     }
   }
 

@@ -115,6 +115,10 @@
   .tbadge{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:5px;padding:0 6px;color:var(--dim);text-transform:uppercase;flex-shrink:0}
   .tbadge.write{color:var(--high);border-color:rgba(255,159,67,.4)}
   .tbadge.end{color:var(--accent);border-color:rgba(91,140,255,.4)}
+  .tbadge.newtag{color:var(--high);border-color:rgba(255,159,67,.4)}
+  .titem.new{border-left-color:rgba(255,159,67,.5)}
+  .titem.new::before{border-color:var(--high)}
+  .twm{color:var(--low);font:11px var(--mono);letter-spacing:.08em;margin:14px 0;padding:5px 10px;border:1px dashed rgba(61,220,151,.35);border-radius:7px;display:inline-block}
   .tdiff{margin-top:7px}
   .filelink{cursor:pointer;color:var(--accent);text-decoration:none}
   .filelink:hover{text-decoration:underline}
@@ -358,7 +362,7 @@ function renderList(){
         <span class="agent-pill">${esc(AGENT_LABEL[c.agent]||c.agent)}</span>
         ${c.origin?`<span class="agent-pill" style="color:var(--accent);border-color:rgba(91,140,255,.4)">👥 ${esc(c.origin)}</span>`:''}
         ${c.open?'<span class="open-dot" title="session still running"></span>':''}
-        ${c.reopened?'<span class="reopen-pill" title="the agent kept working after you approved">↻ new activity</span>':''}
+        ${c.reopened?`<span class="reopen-pill" title="the agent kept working after you approved">↻ ${c.new_changes?c.new_changes+' new':'new activity'}</span>`:''}
         ${c.review==='approved'?'<span class="rv approved">✓</span>':''}
         ${c.review==='flagged'?'<span class="rv flagged">⚑</span>':''}
         <span class="dim" style="margin-left:auto;font-size:11px;flex-shrink:0">${ago(c.started)}</span>
@@ -396,13 +400,19 @@ function renderTimeline(c){
   const items=tlCache[c.session];
   if(!items)return '<div class="dim" style="padding:14px 0">Loading timeline…</div>';
   if(!items.length)return '<div class="dim" style="padding:14px 0">No captured events yet.</div>';
+  const wm=c.reviewed_until;let divider=false;
   return `<section><h3>Every change, in order (${items.length})${c.open?' · <span style="color:var(--accent)">live</span>':''}</h3>`+items.map(it=>{
     const t=new Date(it.ts).toLocaleTimeString();
+    const isNew=wm&&it.ts>wm;
+    let pre='';
+    if(isNew&&!divider){divider=true;pre=`<div class="twm">✓ reviewed up to here — approved ${new Date(wm).toLocaleTimeString()}</div>`;}
+    const cls=isNew?'titem new':'titem';
+    const tag=isNew?'<span class="tbadge newtag">new</span>':'';
     if(it.type==='command')
-      return `<div class="titem"><div class="trow"><span class="tts">${t}</span>${it.ok?'<span class="ok">✓</span>':'<span class="fail">✗</span>'}<span class="mono" style="word-break:break-all">${esc((it.command||'').slice(0,220))}</span>${it.verification?'<span class="vbadge verify">VERIFY</span>':''}</div></div>`;
+      return pre+`<div class="${cls}"><div class="trow"><span class="tts">${t}</span>${it.ok?'<span class="ok">✓</span>':'<span class="fail">✗</span>'}<span class="mono" style="word-break:break-all">${esc((it.command||'').slice(0,220))}</span>${it.verification?'<span class="vbadge verify">VERIFY</span>':''}${tag}</div></div>`;
     if(it.type==='end')
-      return `<div class="titem"><div class="trow"><span class="tts">${t}</span><span class="tbadge end">session end</span>${it.claims&&it.claims.length?`<span class="dim">claimed: “${esc(it.claims[0])}”</span>`:''}</div></div>`;
-    return `<div class="titem"><div class="trow"><span class="tts">${t}</span>${it.action==='write'?'<span class="tbadge write">rewrite</span>':'<span class="tbadge">edit</span>'}<span class="mono" style="word-break:break-all">${esc(it.path)}</span>${it.lines_before!==undefined||it.lines_after!==undefined?`<span class="dim mono">${it.lines_before??'new'} → ${it.lines_after??'—'}</span>`:''}</div><div class="tdiff">${renderFileDiff(it)}</div></div>`;
+      return pre+`<div class="${cls}"><div class="trow"><span class="tts">${t}</span><span class="tbadge end">session end</span>${it.claims&&it.claims.length?`<span class="dim">claimed: “${esc(it.claims[0])}”</span>`:''}${tag}</div></div>`;
+    return pre+`<div class="${cls}"><div class="trow"><span class="tts">${t}</span>${it.action==='write'?'<span class="tbadge write">rewrite</span>':'<span class="tbadge">edit</span>'}<span class="mono" style="word-break:break-all">${esc(it.path)}</span>${it.lines_before!==undefined||it.lines_after!==undefined?`<span class="dim mono">${it.lines_before??'new'} → ${it.lines_after??'—'}</span>`:''}${tag}</div><div class="tdiff">${renderFileDiff(it)}</div></div>`;
   }).join('')+'</section>';
 }
 
@@ -489,7 +499,7 @@ function renderDetail(){
       <button class="btn" onclick="copyPrComment('${esc(c.session)}')" title="Markdown evidence comment for your PR">📋 PR comment</button>
       <span class="kbd-hint"><kbd>a</kbd> / <kbd>f</kbd></span>
     </div>
-    ${c.reopened?`<div class="finding s3" style="margin-bottom:20px"><div class="frow"><span class="rule">↻ reopened</span><span>The agent kept working after you approved. Your approval only covers what you saw — check the Timeline for the new activity, then approve again.</span></div></div>`:''}
+    ${c.reopened?`<div class="finding s3" style="margin-bottom:20px"><div class="frow"><span class="rule">↻ reopened</span><span><b>${c.new_changes||'New'} change${c.new_changes===1?'':'s'}</b> landed after your approval — it only covers what you saw. <a class="filelink" onclick="setDetailTab('timeline')">See exactly what's new →</a></span></div></div>`:''}
     ${c.review==='flagged'&&c.review_note?`<div class="finding s4" style="margin-bottom:20px"><div class="frow"><span class="rule">your note</span><span>“${esc(c.review_note)}” <span class="dim">— fed to the agent's next session in this repo</span></span></div></div>`:''}
     <div class="score">
       <div class="ring" style="background:conic-gradient(${col} ${c.score*3.6}deg,var(--line) 0);"><div style="width:58px;height:58px;border-radius:50%;background:var(--panel);display:flex;align-items:center;justify-content:center">${c.score}</div></div>

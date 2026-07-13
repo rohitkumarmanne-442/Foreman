@@ -660,6 +660,9 @@ test("stale approval: new activity after approve reopens the card", async () => 
   card = buildCards().find((c) => c.session === session);
   assert.equal(card!.review, "pending", "approval voided by new activity");
   assert.equal(card!.reopened, true, "marked as reopened");
+  assert.equal(card!.new_changes, 1, "exactly the one post-approval event counted");
+  assert.ok(card!.reviewed_until, "watermark exposed so the UI can split old vs new");
+  assert.ok(card!.last_activity > card!.reviewed_until!, "new work is after the watermark");
 
   // re-approving after seeing the new work makes it stick
   setReview(session, "approved");
@@ -717,4 +720,16 @@ test("timeline: chronological per-event feed with diffs", async () => {
   const cmd = items[2];
   assert.equal(cmd.command, "pytest -q");
   assert.equal(cmd.verification, true, "pytest counts as verification");
+
+  // Claude Code fires Stop per turn — a session is closed only while the
+  // newest event is a session_end, and reopens when work resumes
+  const { buildCards } = await import("../cards.js");
+  let card = buildCards().find((c) => c.session === session);
+  assert.equal(card!.open, false, "closed right after Stop");
+  await runHook({
+    session_id: session, cwd: TMP, hook_event_name: "PostToolUse",
+    tool_name: "Bash", tool_input: { command: "npm run build" }, tool_response: {},
+  });
+  card = buildCards().find((c) => c.session === session);
+  assert.equal(card!.open, true, "running again once new work lands after the Stop");
 });
