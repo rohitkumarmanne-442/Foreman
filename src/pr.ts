@@ -10,7 +10,13 @@ function fmtSpan(start: string, end: string): string {
   return `${Math.floor(ms / 3_600_000)}h ${Math.round((ms % 3_600_000) / 60_000)}m`;
 }
 
-const fmtTs = (ts?: string) => (ts ? ts.slice(0, 16).replace("T", " ") : "—");
+// local machine time, matching what the reviewer sees in the inbox UI
+const fmtTs = (ts?: string) => {
+  if (!ts) return "—";
+  const d = new Date(ts);
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+};
 
 /** Each finding becomes something the reviewer can actually DO before merging. */
 function checklistItem(rule: string, detail: string): string {
