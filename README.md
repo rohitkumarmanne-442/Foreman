@@ -23,11 +23,11 @@ That happened to me. Foreman exists so it never happens silently again.
 
 Foreman's whole personality fits in its thought cloud: **"Prove it."** Every claim your agents make gets checked against what they actually did.
 
-## Eleven seconds of Foreman
+## Sixteen seconds of Foreman
 
-![Foreman in action: a critical session is reviewed — findings, the 869→97 diff, flagging with a note the agent will read, and signed MCP receipts](assets/demo.gif)
+![Foreman in action: a critical session's findings, the newest-first timeline of every edit, the Ctrl+K command palette, and the agent-trust Insights view](assets/demo.gif)
 
-*What you just watched: a critical card (force push + 89% file rewrite + unverified "everything works"), the click-through diff, the reviewer flagging it with a note **that gets injected into the agent's next session**, and the ed25519-signed MCP receipt log.*
+*What you just watched: a critical card (force push + 89% file rewrite + an unverified "everything works"), the **Timeline** replaying every edit newest-first, the **Ctrl+K palette** with one-keystroke triage, and **Insights** showing which agent earns trust.*
 
 ![The Foreman inbox: a critical session with a force push, an 89% file rewrite, and an unverified success claim — with the reviewer's note that gets fed back to the agent](assets/inbox.png)
 
@@ -299,7 +299,8 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 | Command | What it does |
 |---|---|
 | `foreman init [--agent claude\|cursor\|gemini\|opencode\|all] [--global]` | install native hooks for this repo (or everywhere) |
-| `foreman ui [--port 4517]` | open the review inbox |
+| `foreman ui [--port 4517]` | open the review inbox (reuses a running server, always opens the browser) |
+| `foreman shortcut` | Start Menu + Desktop shortcut (Windows) / app launcher (Linux) |
 | `foreman run [--name X] -- <cmd…>` | supervise any terminal agent for one session |
 | `foreman watch [path]` | watch a repo continuously — any IDE, any tool |
 | `foreman brief [path]` | print outstanding human flags (agents read this) |
@@ -312,6 +313,7 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 | `foreman verify` | verify every signature + chain continuity |
 | `foreman team sync` | exchange signed card packs via the repo |
 | `foreman report [--out audit.md]` | markdown audit of every session |
+| `foreman report --sarif [--out f.sarif]` | findings as SARIF → native GitHub PR annotations |
 | `foreman status` | one-screen summary in the terminal |
 | `foreman demo [--clear]` | seed / remove showcase data |
 | `foreman config` | show config path + active settings |
@@ -334,7 +336,7 @@ Claim detection is negation-aware: *"tests fail"* and *"should now work"* are ne
 
 ## Tune it
 
-`~/.foreman/config.json` (`foreman config` shows the path and live values):
+Easiest: the **⚙ Settings panel** in the inbox — ignore paths, rule toggles, thresholds, webhook and Jira, saved live. Same file by hand: `~/.foreman/config.json` (`foreman config` shows the path and live values):
 
 ```jsonc
 {
@@ -343,8 +345,11 @@ Claim detection is negation-aware: *"tests fail"* and *"should now work"* are ne
   "disable_rules": ["untested_change"],                           // rules you don't want
   "mass_rewrite_min_lines": 50,
   "mass_rewrite_ratio": 0.4,
-  "notify_command": "powershell -c \"[console]::beep(880,300)\""  // runs when a NEW critical card appears
+  "notify_command": "powershell -c \"[console]::beep(880,300)\"", // runs when a NEW critical card appears
+  "notify_webhook": "https://hooks.slack.com/services/…",         // Slack/Teams post on new critical cards
+  "jira": { "base_url": "https://you.atlassian.net", "email": "you@co.com", "project": "ENG" }
   // notify_command env: FOREMAN_SESSION, FOREMAN_LEVEL, FOREMAN_SCORE, FOREMAN_REPO
+  // jira token comes from the JIRA_API_TOKEN env var — never stored on disk
 }
 ```
 
@@ -404,7 +409,7 @@ npm uninstall -g foremanjs   # remove the CLI
 git clone https://github.com/rohitkumarmanne-442/foreman
 cd foreman
 npm install
-npm test        # builds + runs the 19 end-to-end tests
+npm test        # builds + runs the 31 end-to-end tests
 ```
 
 Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML file for the inbox. The test suite spawns real child processes for hooks, drives a fake MCP server through the proxy, git-inits throwaway repos for the watcher, and forges a team pack to prove it gets rejected. PRs welcome; keep that bar.
@@ -417,8 +422,13 @@ Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML fil
 - [x] Hash-linked receipt chains · team packs · CI gate · critical-card notifications
 - [x] PR write-back — `foreman pr` posts the session's evidence on the pull request
 - [x] Generic adapter API (`foreman ingest`) — any tool becomes an adapter in 20 lines
-- [x] Native adapters: Claude Code · Cursor · **Gemini CLI** · **OpenCode** · Codex notify
+- [x] Native adapters: Claude Code · Cursor · **Gemini CLI** · **OpenCode** · Codex notify · **Claude Agent SDK**
 - [x] Menu-bar/tray on **Windows, macOS (xbar/SwiftBar), and Linux (yad)** with critical-card alerts
+- [x] GitHub Action + **SARIF** export — findings as native code-scanning annotations on the PR
+- [x] Slack/Teams webhook on critical cards · flag → **Jira** ticket
+- [x] Command palette (Ctrl+K) · triage mode · Insights · Settings panel · light theme · PWA
+- [x] Approval watermarks — re-review only what changed since you last approved
+- [ ] HTTP/SSE MCP attestation (`foreman wrap` is stdio-only today)
 - [ ] More native adapters as more agents ship hook APIs (each is a thin layer on `foreman ingest`)
 
 ## License
