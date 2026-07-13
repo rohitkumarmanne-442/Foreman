@@ -59,8 +59,11 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
         const touch: FileTouch = existing ?? {
           path,
           action: d.tool === "Write" ? "write" : "edit",
+          first_ts: e.ts,
           lines_before: preLines.get(path),
         };
+        touch.last_ts = e.ts;
+        touch.touches = (touch.touches ?? 0) + 1;
         if (d.tool === "Write") {
           touch.action = "write";
           touch.lines_after = d.lines_after;
@@ -86,7 +89,10 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
       (dr) => dr.ts >= first.ts && (!end || dr.ts <= end.ts)
     ).length;
 
-    const files = [...filesMap.values()];
+    // most recently edited first — "what just changed" is the question reviewers ask
+    const files = [...filesMap.values()].sort((a, b) =>
+      (b.last_ts ?? "").localeCompare(a.last_ts ?? "")
+    );
     const risk = assessRisk({
       files,
       commands,

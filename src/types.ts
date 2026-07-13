@@ -75,6 +75,11 @@ export type RiskLevel = "low" | "medium" | "high" | "critical";
 export interface FileTouch {
   path: string;
   action: "write" | "edit";
+  /** when this file was first / most recently touched in the session */
+  first_ts?: string;
+  last_ts?: string;
+  /** how many separate edit events hit this file */
+  touches?: number;
   lines_before?: number;
   lines_after?: number;
   edits?: Array<{ old: string; new: string }>; // surgical changes, in order

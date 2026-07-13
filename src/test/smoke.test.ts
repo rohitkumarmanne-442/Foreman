@@ -445,6 +445,16 @@ test("pr comment: evidence markdown from a card", async () => {
   assert.ok(md.includes("UNVERIFIED"), "unverified claims surfaced");
   assert.ok(md.includes("mass_rewrite"), "findings listed");
   assert.ok(md.includes("app.py"), "files table present");
+  assert.ok(md.includes("**Span:**"), "session span present");
+  assert.ok(md.includes("What needs eyes first"), "prioritized findings section");
+  assert.ok(md.includes("Reviewer checklist"), "actionable checklist present");
+  assert.ok(md.includes("- [ ]"), "checkboxes render");
+  assert.ok(md.includes("Last edited"), "file recency column present");
+
+  // file recency metadata flows through to cards
+  const appPy = card.files.find((f) => f.path.endsWith("app.py"))!;
+  assert.ok(appPy.last_ts, "file has last_ts");
+  assert.equal(appPy.touches, 1, "touch count tracked");
 });
 
 test("generic ingest: any tool becomes an adapter via JSONL", async () => {

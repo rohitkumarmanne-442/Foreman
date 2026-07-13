@@ -365,7 +365,7 @@ function renderList(){
         ${c.reopened?`<span class="reopen-pill" title="the agent kept working after you approved">↻ ${c.new_changes?c.new_changes+' new':'new activity'}</span>`:''}
         ${c.review==='approved'?'<span class="rv approved">✓</span>':''}
         ${c.review==='flagged'?'<span class="rv flagged">⚑</span>':''}
-        <span class="dim" style="margin-left:auto;font-size:11px;flex-shrink:0">${ago(c.started)}</span>
+        <span style="margin-left:auto;font-size:11px;flex-shrink:0;color:${c.open?'var(--low)':'var(--dim)'}" title="started ${ago(c.started)}">${ago(c.last_activity||c.started)}</span>
       </div>
       <div class="meta">
         <span><b>${c.files.length}</b> files</span>
@@ -427,7 +427,9 @@ function closeFlag(){flagTarget=null;$('flagmodal').style.display='none';}
 function submitFlag(){if(!flagTarget)return;const n=$('flagnote').value;const t=flagTarget;closeFlag();review(t,'flagged',n);}
 
 function toggleDiff(i){
-  openDiffs.has(i)?openDiffs.delete(i):openDiffs.add(i);
+  const c=cards.find(x=>x.session===selected);
+  const p=c&&c.files[i]?c.files[i].path:null;
+  if(p){openDiffs.has(p)?openDiffs.delete(p):openDiffs.add(p);}
   const row=$('diff-'+i);if(row)row.classList.toggle('show');
 }
 
@@ -492,7 +494,7 @@ function renderDetail(){
   const col=lvlColor[c.level];
   $('detail').innerHTML=`
     <h2>${esc(base(c.cwd))} <span class="dim" style="font-weight:400">· ${esc(AGENT_LABEL[c.agent]||c.agent)}${c.origin?` · 👥 ${esc(c.origin)}'s agent`:''}</span></h2>
-    <div class="sub">${esc(c.cwd)} · session ${esc(c.session.slice(0,12))} · ${new Date(c.started).toLocaleString()}${c.open?' · <span style="color:var(--accent)">RUNNING</span>':''}</div>
+    <div class="sub">${esc(c.cwd)} · session ${esc(c.session.slice(0,12))} · started ${new Date(c.started).toLocaleString()} · last activity <span style="color:${c.open?'var(--low)':'var(--text)'}">${ago(c.last_activity||c.started)}</span>${c.open?' · <span style="color:var(--accent)">RUNNING</span>':''}</div>
     <div class="actions">
       <button class="btn approve ${c.review==='approved'?'active':''}" onclick="review('${esc(c.session)}','${c.review==='approved'?'pending':'approved'}')">✓ ${c.review==='approved'?'Approved':'Approve'}</button>
       <button class="btn flag ${c.review==='flagged'?'active':''}" onclick="${c.review==='flagged'?`review('${esc(c.session)}','pending')`:`openFlag('${esc(c.session)}')`}">⚑ ${c.review==='flagged'?'Flagged':'Flag'}</button>
@@ -522,10 +524,11 @@ function overviewHtml(c){
     ${c.findings.length?`<section id="sec-findings"><h3>Findings</h3>${c.findings.map(f=>`<div class="finding s${f.severity}"><div class="frow"><span class="rule">${esc(f.rule)}</span><span>${esc(f.detail)}</span></div>${WHY[f.rule]?`<div class="why">💡 ${esc(WHY[f.rule])}</div>`:''}</div>`).join('')}</section>`:''}
     ${c.claims.length?`<section id="sec-claims"><h3>Claims vs Evidence</h3>${c.claims.map(cl=>`<div class="claim"><span>${c.verified_claims?'✅':'❓'}</span><span>“${esc(cl)}”</span></div>`).join('')}
       <div class="dim" style="font-size:12px;margin-top:4px">${c.verified_claims?'Backed by at least one passing verification command.':'No passing verification command found in this session.'}</div></section>`:''}
-    ${c.files.length?`<section id="sec-files"><h3>Files touched (${c.files.length}) — click a file for the diff</h3><table><tr><th>File</th><th>Action</th><th>Lines</th></tr>
+    ${c.files.length?`<section id="sec-files"><h3>Files touched (${c.files.length}) — most recent first, click for the diff</h3><table><tr><th>File</th><th>Action</th><th>Lines</th><th>Last edited</th></tr>
       ${c.files.map((f,i)=>{const cut=f.action==='write'&&f.lines_before>=50&&f.lines_after<f.lines_before*0.4;
-        return `<tr><td><a class="filelink mono" onclick="toggleDiff(${i})">${esc(f.path)}</a></td><td>${f.action}</td><td class="mono ${cut?'lines-cut':''}">${f.lines_before??'—'} → ${f.lines_after??'—'}${cut?' ⚠':''}</td></tr>
-        <tr class="diff ${openDiffs.has(i)?'show':''}" id="diff-${i}"><td colspan="3">${renderFileDiff(f)}</td></tr>`}).join('')}</table></section>`:''}
+        const fresh=f.last_ts&&(Date.now()-new Date(f.last_ts))<120000;
+        return `<tr><td><a class="filelink mono" onclick="toggleDiff(${i})">${esc(f.path)}</a></td><td>${f.action}${f.touches>1?` <span class="dim mono">×${f.touches}</span>`:''}</td><td class="mono ${cut?'lines-cut':''}">${f.lines_before??'—'} → ${f.lines_after??'—'}${cut?' ⚠':''}</td><td class="mono ${fresh?'ok':'dim'}" style="white-space:nowrap">${f.last_ts?(fresh?'● ':'')+ago(f.last_ts):'—'}</td></tr>
+        <tr class="diff ${openDiffs.has(f.path)?'show':''}" id="diff-${i}"><td colspan="4">${renderFileDiff(f)}</td></tr>`}).join('')}</table></section>`:''}
     ${c.commands.length?`<section><h3>Commands run (${c.commands.length})</h3><table><tr><th></th><th>Command</th><th></th></tr>
       ${c.commands.map(k=>`<tr><td>${k.ok?'<span class="ok">✓</span>':'<span class="fail">✗</span>'}</td><td class="mono">${esc(k.command.slice(0,180))}</td><td>${k.verification?'<span class="vbadge verify">VERIFY</span>':''}</td></tr>`).join('')}</table></section>`:''}
     ${c.last_message?`<section><h3>Agent's final word</h3><div class="msg">${esc(c.last_message)}</div></section>`:''}
