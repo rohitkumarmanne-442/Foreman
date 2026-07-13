@@ -26,7 +26,23 @@
   ::selection{background:rgba(106,149,255,.35)}
   button:focus-visible,input:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .card,.btn,.chip,.tab,.dtab,.filelink,.helpbtn,.cmd button{transition:background .16s,border-color .16s,color .16s,box-shadow .16s,transform .16s}
-  header{display:flex;align-items:center;gap:16px;padding:11px 20px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#121828,#0d1220);flex-wrap:wrap;position:relative;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .glass{background:rgba(17,23,38,.62)!important;backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);border:1px solid rgba(255,255,255,.08)}
+  :root[data-theme=light] .glass{background:rgba(255,255,255,.6)!important;border-color:rgba(20,30,60,.12)}
+  header{display:flex;align-items:center;gap:16px;padding:11px 20px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(15,21,36,.72);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);flex-wrap:wrap;position:relative;z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  :root[data-theme=light] header{background:rgba(250,252,255,.72);border-bottom-color:rgba(20,30,60,.1)}
+  .tabs{backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .pal,.modal,#maptip,.tour-tip,.toast{backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5)}
+  .pal{background:rgba(20,26,43,.74)}
+  .modal{background:rgba(16,21,35,.78)}
+  #maptip{background:rgba(20,26,43,.76)}
+  .toast{background:rgba(26,34,55,.76)}
+  .tour-tip{background:rgba(26,34,55,.8)}
+  :root[data-theme=light] .pal,:root[data-theme=light] .modal,:root[data-theme=light] #maptip,:root[data-theme=light] .toast,:root[data-theme=light] .tour-tip{background:rgba(255,255,255,.78)}
+  #mapinfo{position:absolute;top:74px;right:22px;width:min(400px,90%);max-height:calc(100% - 150px);overflow-y:auto;border-radius:16px;padding:16px 18px;display:none;z-index:11;box-shadow:0 20px 60px rgba(0,0,0,.5);background:rgba(17,23,38,.72);backdrop-filter:blur(22px) saturate(1.5);-webkit-backdrop-filter:blur(22px) saturate(1.5);border:1px solid rgba(255,255,255,.09)}
+  :root[data-theme=light] #mapinfo{background:rgba(255,255,255,.75);border-color:rgba(20,30,60,.12)}
+  #mapinfo h4{font:600 14px var(--display);margin-bottom:2px;word-break:break-all}
+  #mapinfo .mrow{display:flex;align-items:center;gap:9px;padding:9px 11px;border:1px solid var(--line);border-radius:11px;margin-top:8px;background:rgba(255,255,255,.03)}
+  #mapinfo .mrow .btn{margin-left:auto;padding:4px 12px;font-size:12px;flex-shrink:0}
   header::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;background:linear-gradient(90deg,transparent 2%,rgba(106,149,255,.55) 16%,rgba(143,123,255,.35) 45%,transparent 80%)}
   .logo{font:800 15px var(--display);letter-spacing:.15em;display:flex;align-items:center;gap:10px}
   .logo b{font-weight:800}
@@ -291,6 +307,7 @@
     <div class="tab" id="tab-uses" onclick="toggleUses()" title="Everything Foreman can do (u)">⚡ Use cases</div>
     <button class="helpbtn" onclick="openPalette()" title="Command palette (Ctrl+K)">⌘</button>
     <button class="helpbtn" onclick="openSettings()" title="Settings">⚙</button>
+    <button class="helpbtn" id="themebtn" onclick="toggleTheme()" title="Dark / light theme">🌙</button>
     <button class="helpbtn" onclick="toggleHelp()" title="Help (?)">?</button>
   </div>
 </header>
@@ -313,6 +330,7 @@
     </div>
     <canvas id="mapcv"></canvas>
     <div id="maptip"></div>
+    <div id="mapinfo"></div>
     <div id="maplegend">
       <span><i style="background:#6a95ff;border-radius:3px"></i>session hub</span>
       <span><i style="background:#3d4a6b"></i>file</span>
@@ -557,7 +575,12 @@ function mapTick(){
     const f=(d-92)*0.004;dx/=d;dy/=d;
     a.vx+=dx*f*d*0.01;a.vy+=dy*f*d*0.01;b.vx-=dx*f*d*0.01;b.vy-=dy*f*d*0.01;
   }
-  for(const n of mapNodes){n.vx*=0.86;n.vy*=0.86;n.x+=n.vx;n.y+=n.vy;
+  for(const n of mapNodes){
+    if(n!==mapDrag){
+      const dx=n.x-mapMouse.x,dy=n.y-mapMouse.y,d2=dx*dx+dy*dy;
+      if(d2<12100&&d2>1){const d=Math.sqrt(d2),f=(110-d)*0.028/d;n.vx+=dx*f;n.vy+=dy*f;}
+    }
+    n.vx*=0.86;n.vy*=0.86;n.x+=n.vx;n.y+=n.vy;
     n.x=Math.max(30,Math.min((cv.clientWidth||1200)-30,n.x));n.y=Math.max(56,Math.min((cv.clientHeight||700)-46,n.y));}
 }
 function mapDraw(){
@@ -597,25 +620,51 @@ function startMap(){
   loop();
 }
 function stopMap(){cancelAnimationFrame(mapAnim);mapAnim=null;}
+function showFileInfo(n){
+  const real=cards.filter(c=>!c.session.startsWith('demo-'));
+  const setAll=real.length?real:cards;
+  const sess=setAll.filter(c=>c.files.some(f=>f.path===n.path));
+  const bn=n.path.split(/[\\/]/).pop()||n.path;
+  const finds=[];
+  for(const c of sess)for(const f of c.findings)if(f.detail.includes(n.path)||f.detail.includes(bn))finds.push(f);
+  $('mapinfo').innerHTML=`
+    <button class="close" onclick="$('mapinfo').style.display='none'">✕</button>
+    <h4 class="mono">${esc(bn)}</h4>
+    <div class="dim" style="font-size:11px;word-break:break-all">${esc(n.path)}</div>
+    <div class="meta" style="margin-top:9px"><span><b>${n.touches}</b> edits</span><span><b>${sess.length}</b> session(s)</span>${n.last?`<span>last ${ago(n.last)}</span>`:''}</div>
+    ${finds.length?`<div style="margin-top:11px">${finds.slice(0,3).map(f=>`<div class="finding s${f.severity}" style="margin-bottom:6px;padding:8px 12px"><div class="frow"><span class="rule">${esc(f.rule)}</span><span style="font-size:12px">${esc(f.detail.slice(0,160))}</span></div></div>`).join('')}</div>`
+      :`<div class="dim" style="font-size:12px;margin-top:11px">No findings involve this file — it's on the map because your agents edited it.</div>`}
+    <h3 style="margin-top:15px">Review the session(s) that touched it</h3>
+    ${sess.map(c=>`<div class="mrow"><span class="badge b-${c.level}">${c.level} ${c.score}</span><span style="font-size:12.5px;font-weight:600">${esc(base(c.cwd))}</span><span class="dim" style="font-size:11px">${ago(c.last_activity||c.started)}</span><button class="btn" onclick="showTab('inbox');select('${esc(c.session)}')">Review →</button></div>`).join('')}`;
+  $('mapinfo').style.display='block';
+}
+let mapMouse={x:-9999,y:-9999},mapDrag=null,mapDragMoved=0;
 (function(){
   const cv=$('mapcv'),tip=$('maptip');
   cv.addEventListener('mousemove',e=>{
     const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
-    mapHover=null;let best=400;
-    for(const n of mapNodes){const d=(n.x-mx)**2+(n.y-my)**2;if(d<best&&d<(n.r+12)**2){best=d;mapHover=n;}}
-    cv.style.cursor=mapHover?'pointer':'grab';
+    mapMouse={x:mx,y:my};
+    if(mapDrag){mapDrag.x=mx;mapDrag.y=my;mapDrag.vx=0;mapDrag.vy=0;mapDragMoved+=Math.abs(e.movementX)+Math.abs(e.movementY);tip.style.display='none';return;}
+    mapHover=null;let best=500;
+    for(const n of mapNodes){const d=(n.x-mx)**2+(n.y-my)**2;if(d<best&&d<(n.r+13)**2){best=d;mapHover=n;}}
+    cv.style.cursor=mapHover?'grab':'default';
     if(mapHover){
       tip.style.display='block';tip.style.left=Math.min(mx+18,r.width-350)+'px';tip.style.top=(my+14)+'px';
       tip.innerHTML=mapHover.type==='s'
-        ?`<b>${esc(mapHover.label)}</b> · ${esc(AGENT_LABEL[mapHover.card.agent]||mapHover.card.agent)}<br><span class="dim">${mapHover.card.level} ${mapHover.card.score} · ${mapHover.card.files.length} files · ${ago(mapHover.card.last_activity||mapHover.card.started)}</span>`
-        :`<span class="mono">${esc(mapHover.path)}</span><br><span class="dim">${mapHover.touches} edit(s) · ${mapHover.sessions} session(s)${mapHover.last?' · '+ago(mapHover.last):''}${mapHover.sev?` · <span style="color:${mapHover.sev>=4?'var(--critical)':'var(--high)'}">involved in findings</span>`:''}</span>`;
+        ?`<b>${esc(mapHover.label)}</b> · ${esc(AGENT_LABEL[mapHover.card.agent]||mapHover.card.agent)}<br><span class="dim">${mapHover.card.level} ${mapHover.card.score} · ${mapHover.card.files.length} files · ${ago(mapHover.card.last_activity||mapHover.card.started)} — click to open the card</span>`
+        :`<span class="mono">${esc(mapHover.path)}</span><br><span class="dim">${mapHover.touches} edit(s) · ${mapHover.sessions} session(s)${mapHover.last?' · '+ago(mapHover.last):''}${mapHover.sev?` · <span style="color:${mapHover.sev>=4?'var(--critical)':'var(--high)'}">involved in findings</span>`:''} — click for details, drag to play</span>`;
     }else tip.style.display='none';
   });
-  cv.addEventListener('click',()=>{
-    if(!mapHover)return;
-    if(mapHover.type==='s'){showTab('inbox');select(mapHover.card.session);}
-    else{showTab('inbox');$('search').value=mapHover.path.split(/[\\/]/).pop()||'';filter='all';renderList();}
+  cv.addEventListener('mousedown',()=>{if(mapHover){mapDrag=mapHover;mapDragMoved=0;cv.style.cursor='grabbing';}});
+  window.addEventListener('mouseup',()=>{
+    if(!mapDrag)return;
+    const n=mapDrag;mapDrag=null;cv.style.cursor='default';
+    if(mapDragMoved<6){
+      if(n.type==='s'){showTab('inbox');select(n.card.session);}
+      else showFileInfo(n);
+    }
   });
+  cv.addEventListener('mouseleave',()=>{mapMouse={x:-9999,y:-9999};$('maptip').style.display='none';});
 })();
 
 // ── resizable / collapsible sidebar ────────────────────────────────
@@ -1081,12 +1130,15 @@ let tourAutoChecked=false;
 
 // ── theme ───────────────────────────────────────────────────────────
 if(localStorage.getItem('foreman_theme')==='light')document.documentElement.dataset.theme='light';
+function themeIcon(){const b=$('themebtn');if(b)b.textContent=document.documentElement.dataset.theme==='light'?'☀️':'🌙';}
 function toggleTheme(){
   const light=document.documentElement.dataset.theme==='light';
   if(light){delete document.documentElement.dataset.theme;localStorage.setItem('foreman_theme','dark');}
   else{document.documentElement.dataset.theme='light';localStorage.setItem('foreman_theme','light');}
+  themeIcon();
   toast(light?'🌙 Dark theme':'☀️ Light theme');
 }
+themeIcon();
 
 // ── config cache (settings panel + jira checkbox) ───────────────────
 let cfgCache=null,cfgMeta=null;
