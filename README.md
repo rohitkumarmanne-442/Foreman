@@ -23,11 +23,11 @@ That happened to me. Foreman exists so it never happens silently again.
 
 Foreman's whole personality fits in its thought cloud: **"Prove it."** Every claim your agents make gets checked against what they actually did.
 
-## Sixteen seconds of Foreman
+## The full tour, in half a minute
 
-![Foreman in action: a critical session's findings, the newest-first timeline of every edit, the Ctrl+K command palette, and the agent-trust Insights view](assets/demo.gif)
+![The complete Foreman walkthrough: the risk-ranked inbox, a critical session's findings, the newest-first Timeline, the Ctrl+K command palette, the Insights analytics dashboard with custom date ranges, the live Blast Radius map with a file's evidence panel, signed MCP receipts, flagging with a note the agent will read, and the light theme](assets/demo.gif)
 
-*What you just watched: a critical card (force push + 89% file rewrite + an unverified "everything works"), the **Timeline** replaying every edit newest-first, the **Ctrl+K palette** with one-keystroke triage, and **Insights** showing which agent earns trust.*
+*Every screen, in order: the **risk-ranked inbox** → a critical card whose agent claimed "everything works" with **zero verification commands** → the **Timeline** replaying each edit newest-first with an approved-up-to-here watermark → the **Ctrl+K palette** (approve, flag, bulk-triage, jump anywhere) → the **Insights dashboard** with date ranges, period-over-period deltas and the agent-trust scoreboard → the **Blast Radius**, a live map of AI's footprint where risky files glow and clicking one opens its evidence → **ed25519-signed MCP receipts** → flagging with a note **the agent reads next session** → light theme. All local, all one HTML file.*
 
 ![The Foreman inbox: a critical session with a force push, an 89% file rewrite, and an unverified success claim — with the reviewer's note that gets fed back to the agent](assets/inbox.png)
 
