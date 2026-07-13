@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Foreman — Review Inbox</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#0d1220">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='1.5' y='1.5' width='61' height='61' rx='14' fill='%230b0e14' stroke='%23232a3b' stroke-width='3'/%3E%3Ctext x='31' y='45' text-anchor='middle' font-family='Segoe UI,Roboto,Helvetica,Arial,sans-serif' font-size='36' font-weight='800' letter-spacing='-1'%3E%3Ctspan fill='%23ffffff'%3EF%3C/tspan%3E%3Ctspan fill='%235b8cff'%3EM%3C/tspan%3E%3C/text%3E%3C/svg%3E">
 <style>
   :root{
@@ -201,6 +203,57 @@
   .krow{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--dim);margin-bottom:5px}
   .close{float:right;background:none;border:none;color:var(--dim);font-size:18px;cursor:pointer}
   .close:hover{color:var(--text)}
+  #palette{position:fixed;inset:0;background:rgba(4,6,11,.6);display:none;align-items:flex-start;justify-content:center;z-index:70;padding-top:12vh}
+  #palette.show{display:flex}
+  .pal{width:min(620px,92vw);background:linear-gradient(180deg,var(--panel3),var(--panel2));border:1px solid var(--line2);border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;animation:pop .14s ease-out}
+  #palinput{width:100%;padding:15px 20px;background:transparent;border:none;outline:none;color:var(--text);font:15px var(--font);border-bottom:1px solid var(--line)}
+  #pallist{max-height:46vh;overflow-y:auto;padding:6px}
+  .palitem{display:flex;align-items:center;gap:11px;padding:9px 14px;border-radius:9px;cursor:pointer;font-size:13.5px;color:var(--dim)}
+  .palitem .pico{width:20px;text-align:center;flex-shrink:0}
+  .palitem .phint{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--faint);flex-shrink:0}
+  .palitem b{color:var(--text);font-weight:600}
+  .palitem.sel{background:linear-gradient(90deg,rgba(106,149,255,.16),rgba(106,149,255,.06));color:var(--text)}
+  .palfoot{padding:8px 16px;border-top:1px solid var(--line);color:var(--faint);font-size:11px;display:flex;gap:8px;align-items:center}
+  #setmodal{position:fixed;inset:0;background:rgba(4,6,11,.72);display:none;align-items:center;justify-content:center;z-index:50}
+  #setmodal.show{display:flex}
+  .sfield{background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font:12.5px var(--mono);padding:6px 10px;outline:none;width:100%}
+  .sfield:focus{border-color:rgba(106,149,255,.55)}
+  textarea.sfield{resize:vertical}
+  .srow{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--dim);margin-bottom:7px;flex-wrap:wrap}
+  .srow .sfield{flex:1;min-width:120px;width:auto}
+  .rulechk{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--dim);cursor:pointer}
+  .rulechk input{accent-color:var(--accent)}
+  #insights{flex:1;overflow-y:auto;padding:28px 36px;display:none}
+  .igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:26px}
+  .icard{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.03)}
+  .icard b{font:650 24px var(--mono);font-variant-numeric:tabular-nums;display:block}
+  .icard span{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.1em}
+  .spark{display:flex;align-items:flex-end;gap:3px;height:64px;padding:4px 0}
+  .spark .bar{flex:1;min-width:6px;background:linear-gradient(180deg,var(--accent),rgba(106,149,255,.25));border-radius:3px 3px 0 0;position:relative}
+  .spark .bar span{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font:10px var(--mono);color:var(--faint)}
+  .sparklbl{display:flex;gap:3px}
+  .sparklbl i{flex:1;min-width:6px;font:9px var(--mono);color:var(--faint);text-align:center;font-style:normal}
+  .rbar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:12.5px}
+  .rbar .rname{width:170px;font-family:var(--mono);font-size:11.5px;color:var(--dim);text-align:right;flex-shrink:0}
+  .rbar .rtrack{flex:1;height:9px;border-radius:5px;background:rgba(255,255,255,.04);overflow:hidden}
+  .rbar .rfill{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .rbar .rn{font-family:var(--mono);font-size:11px;color:var(--dim);width:26px}
+  .dhl{border-radius:3px}
+  .dline.del .dhl{background:rgba(255,84,104,.38)}
+  .dline.add .dhl{background:rgba(63,224,160,.32)}
+  .dmorebtn{display:block;width:100%;padding:6px;background:rgba(106,149,255,.07);border:none;border-top:1px solid var(--line);color:var(--accent);font:11px var(--mono);cursor:pointer}
+  .dmorebtn:hover{background:rgba(106,149,255,.13)}
+  :root[data-theme=light]{
+    --bg:#eef1f8; --bg2:#e7ebf5; --panel:#ffffff; --panel2:#f7f9fd; --panel3:#eef2fa;
+    --line:#d9e0ee; --line2:#bfcae2;
+    --text:#182035; --dim:#5b6478; --faint:#8b93a8;
+    --add:#d9f5e5; --add-t:#0f7a45; --del:#fde3e8; --del-t:#b02a3d;
+  }
+  :root[data-theme=light] body::before{background:radial-gradient(1000px 520px at 14% -12%,rgba(106,149,255,.12),transparent 60%)}
+  :root[data-theme=light] header{background:linear-gradient(180deg,#fdfeff,#f2f5fb)}
+  :root[data-theme=light] .chip.active{box-shadow:0 3px 12px -3px rgba(77,125,255,.5)}
+  :root[data-theme=light] .dblock{background:#f2f5fb}
+  :root[data-theme=light] .logo svg rect{fill:#eef2fa;stroke:#bfcae2}
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:9px;border:2px solid transparent;background-clip:content-box}
   ::-webkit-scrollbar-thumb:hover{background:#3a4a73;background-clip:content-box}
@@ -215,7 +268,10 @@
   <div class="tabs">
     <div class="tab active" id="tab-inbox" onclick="showTab('inbox')">Inbox<span class="n" id="n-inbox">0</span></div>
     <div class="tab" id="tab-receipts" onclick="showTab('receipts')">MCP Receipts<span class="n" id="n-receipts">0</span></div>
+    <div class="tab" id="tab-insights" onclick="showTab('insights')">Insights</div>
     <div class="tab" id="tab-uses" onclick="toggleUses()" title="Everything Foreman can do (u)">⚡ Use cases</div>
+    <button class="helpbtn" onclick="openPalette()" title="Command palette (Ctrl+K)">⌘</button>
+    <button class="helpbtn" onclick="openSettings()" title="Settings">⚙</button>
     <button class="helpbtn" onclick="toggleHelp()" title="Help (?)">?</button>
   </div>
 </header>
@@ -230,17 +286,50 @@
   <div id="resizer" title="drag to resize · double-click to collapse the list"></div>
   <div id="detail"></div>
   <div id="receipts"></div>
+  <div id="insights"></div>
 </main>
 <footer>
   <span id="status">connecting…</span><span>auto-refresh 3s</span><span>127.0.0.1 only — your data never leaves this machine</span>
   <span style="margin-left:auto"><kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>a</kbd> approve · <kbd>f</kbd> flag · <kbd>?</kbd> help</span>
 </footer>
+<div id="palette" onclick="if(event.target===this)closePalette()">
+  <div class="pal">
+    <input id="palinput" placeholder="Type a command or jump to a session…" oninput="palIdx=0;renderPal()" autocomplete="off" spellcheck="false">
+    <div id="pallist"></div>
+    <div class="palfoot"><kbd>↑</kbd><kbd>↓</kbd> navigate · <kbd>Enter</kbd> run · <kbd>Esc</kbd> close</div>
+  </div>
+</div>
+<div id="setmodal" onclick="if(event.target===this)closeSettings()">
+  <div class="modal" style="max-width:560px">
+    <button class="close" onclick="closeSettings()">✕</button>
+    <h2>⚙ Settings</h2>
+    <p style="font-size:12px">Saved to <span class="mono" id="cfgpath"></span> — applies immediately, no restart.</p>
+    <h4>Ignore paths (one pattern per line, * wildcards)</h4>
+    <textarea id="s_ignore" rows="4" class="sfield"></textarea>
+    <h4>Risk rules</h4>
+    <div id="s_rules" style="display:grid;grid-template-columns:1fr 1fr;gap:5px"></div>
+    <h4>Mass-rewrite thresholds</h4>
+    <div class="srow">min lines <input id="s_mrl" type="number" class="sfield" style="width:90px"> · rewrite counts when new size &lt; <input id="s_mrr" type="number" step="0.05" min="0.05" max="0.95" class="sfield" style="width:90px"> of original</div>
+    <h4>Notifications (new critical cards)</h4>
+    <div class="srow">shell command <input id="s_ncmd" class="sfield" placeholder="optional — env: FOREMAN_SESSION/LEVEL/SCORE/REPO"></div>
+    <div class="srow">webhook URL <input id="s_nweb" class="sfield" placeholder="Slack / Teams incoming webhook — optional"></div>
+    <h4>Jira — flag a card → create a ticket</h4>
+    <div class="srow">base URL <input id="s_jurl" class="sfield" placeholder="https://yourteam.atlassian.net"></div>
+    <div class="srow">email <input id="s_jmail" class="sfield"> project key <input id="s_jproj" class="sfield" style="width:110px"></div>
+    <div class="srow">token env var <input id="s_jenv" class="sfield" style="width:180px" placeholder="JIRA_API_TOKEN"> <span id="s_jtok" class="dim" style="font-size:12px"></span></div>
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn approve" onclick="saveSettings()">Save settings</button>
+      <button class="btn" onclick="closeSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="toasts"></div>
 <div id="flagmodal" style="position:fixed;inset:0;background:rgba(5,7,12,.7);display:none;align-items:center;justify-content:center;z-index:55" onclick="if(event.target===this)closeFlag()">
   <div class="modal" style="max-width:480px">
     <h2>⚑ Flag this session</h2>
     <p style="font-size:13px;color:var(--dim);margin-bottom:10px">Tell the agent what went wrong. Your note is fed back into its next session in this repo (<span class="mono">foreman brief</span>).</p>
     <textarea id="flagnote" rows="4" placeholder="e.g. Don't force-push to main. The rewrite of app.py deleted working code — restore it and make surgical edits instead." style="width:100%;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--text);font-size:13px;padding:10px;resize:vertical"></textarea>
+    <label id="jirarow" style="display:none;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--dim);cursor:pointer"><input type="checkbox" id="jiracheck" style="accent-color:var(--accent)"> Also create a Jira ticket with this evidence</label>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn flag" onclick="submitFlag()">⚑ Flag session</button>
       <button class="btn" onclick="closeFlag()">Cancel</button>
@@ -301,8 +390,9 @@
       <li><b style="color:var(--text)">Timeline</b> — the sub-tab inside every card replays each edit and command in the order they happened, diffs included. Live for running sessions.</li>
     </ul>
     <h4>Keyboard</h4>
+    <div class="krow"><kbd>Ctrl</kbd>+<kbd>K</kbd> command palette — every action, fuzzy-searchable</div>
     <div class="krow"><kbd>j</kbd><kbd>k</kbd> next / previous card</div>
-    <div class="krow"><kbd>a</kbd> approve selected · <kbd>f</kbd> flag selected</div>
+    <div class="krow"><kbd>a</kbd> approve selected · <kbd>f</kbd> flag selected · <kbd>Enter</kbd> approve &amp; jump to next (triage)</div>
     <div class="krow"><kbd>u</kbd> use cases · <kbd>/</kbd> search · <kbd>?</kbd> this help · <kbd>Esc</kbd> close</div>
     <h4>Tune it</h4>
     <p>Ignore paths, disable rules, or change thresholds in <span class="mono">~/.foreman/config.json</span> — see <span class="mono">foreman config</span>.</p>
@@ -341,10 +431,13 @@ function toggleUses(){$('usesmodal').classList.toggle('show');}
 function showTab(t){tab=t;
   $('tab-inbox').classList.toggle('active',t==='inbox');
   $('tab-receipts').classList.toggle('active',t==='receipts');
+  $('tab-insights').classList.toggle('active',t==='insights');
   $('listwrap').style.display=t==='inbox'?'flex':'none';
   $('resizer').style.display=t==='inbox'?'block':'none';
   $('detail').style.display=t==='inbox'?'block':'none';
   $('receipts').style.display=t==='receipts'?'block':'none';
+  $('insights').style.display=t==='insights'?'block':'none';
+  if(t==='insights')renderInsights();
 }
 
 // ── resizable / collapsible sidebar ────────────────────────────────
@@ -421,12 +514,26 @@ function chips(){
      <div class="chip ${sortMode==='activity'?'active':''}" title="latest activity first" onclick="setSort('activity')">🕐 Active</div>`;
 }
 
+// search operators: rule:secret agent:cursor level:critical repo:qdev — rest is free text
+function parseQuery(q){
+  const f={text:[]};
+  for(const t of q.split(/\s+/)){
+    const m=t.match(/^(rule|agent|level|repo):(.+)$/i);
+    if(m)f[m[1].toLowerCase()]=m[2].toLowerCase();
+    else if(t)f.text.push(t.toLowerCase());
+  }
+  return f;
+}
 function visible(){
-  const q=($('search').value||'').toLowerCase();
+  const f=parseQuery(($('search').value||'').toLowerCase());
   return orderCards(cards.filter(c=>
     statusMatch(c)&&
     (agentFilter==='all'||c.agent===agentFilter)&&
-    (!q||c.cwd.toLowerCase().includes(q)||c.session.toLowerCase().includes(q)||c.files.some(f=>f.path.toLowerCase().includes(q)))));
+    (!f.rule||c.findings.some(x=>x.rule.includes(f.rule)))&&
+    (!f.agent||c.agent.toLowerCase().includes(f.agent))&&
+    (!f.level||c.level===f.level)&&
+    (!f.repo||c.cwd.toLowerCase().includes(f.repo))&&
+    f.text.every(q=>c.cwd.toLowerCase().includes(q)||c.session.toLowerCase().includes(q)||c.files.some(x=>x.path.toLowerCase().includes(q)))));
 }
 
 function renderStats(){
@@ -517,9 +624,25 @@ async function review(session,status,note){
   await refresh();
 }
 let flagTarget=null;
-function openFlag(session){flagTarget=session;$('flagnote').value='';$('flagmodal').style.display='flex';setTimeout(()=>$('flagnote').focus(),50);}
+function openFlag(session){
+  flagTarget=session;$('flagnote').value='';
+  $('jirarow').style.display=(cfgCache&&cfgCache.jira&&cfgCache.jira.base_url)?'flex':'none';
+  $('jiracheck').checked=false;
+  $('flagmodal').style.display='flex';setTimeout(()=>$('flagnote').focus(),50);
+}
 function closeFlag(){flagTarget=null;$('flagmodal').style.display='none';}
-function submitFlag(){if(!flagTarget)return;const n=$('flagnote').value;const t=flagTarget;closeFlag();review(t,'flagged',n);}
+async function submitFlag(){
+  if(!flagTarget)return;
+  const n=$('flagnote').value,t=flagTarget,jira=$('jiracheck').checked;
+  closeFlag();
+  await review(t,'flagged',n);
+  if(jira){
+    try{
+      const r=await fetch('/api/jira',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session:t,note:n})}).then(x=>x.json());
+      if(r.ok)toast(`🎫 Jira ticket created: ${r.key}`);else toast('Jira failed: '+(r.error||'unknown'));
+    }catch(e){toast('Jira failed: '+e);}
+  }
+}
 
 function toggleDiff(i){
   const c=cards.find(x=>x.session===selected);
@@ -555,22 +678,53 @@ function lineDiff(a,b){
   return res;
 }
 
+// word-level highlight: mark the differing middle of a changed line pair
+function hlPair(a,b){
+  let i=0;while(i<a.length&&i<b.length&&a[i]===b[i])i++;
+  let j=0;while(j<a.length-i&&j<b.length-i&&a[a.length-1-j]===b[b.length-1-j])j++;
+  const wrap=(s)=>esc(s.slice(0,i))+(s.length-j>i?'<span class="dhl">'+esc(s.slice(i,s.length-j))+'</span>':'')+esc(s.slice(s.length-j));
+  return [wrap(a),wrap(b)];
+}
+function diffRows(d){
+  const rows=[];
+  for(let k=0;k<d.length;k++){
+    const [t,l]=d[k];
+    if(t==='skip'){rows.push(`<div class="dline ctx">${esc(l)}</div>`);continue;}
+    if(t==='del'&&k+1<d.length&&d[k+1][0]==='add'){
+      const [ha,hb]=hlPair(l,d[k+1][1]);
+      rows.push(`<div class="dline del">- ${ha}</div>`,`<div class="dline add">+ ${hb}</div>`);
+      k++;continue;
+    }
+    rows.push(`<div class="dline ${t}">${t==='add'?'+':t==='del'?'-':' '} ${esc(l)}</div>`);
+  }
+  return rows;
+}
+function capBlock(rows){
+  if(rows.length<=70)return `<div class="dblock">${rows.join('')}</div>`;
+  return `<div class="dblock">${rows.slice(0,50).join('')}<div style="display:none">${rows.slice(50).join('')}</div><button class="dmorebtn" onclick="this.previousElementSibling.style.display='block';this.remove()">▼ show ${rows.length-50} more lines</button></div>`;
+}
 function renderFileDiff(f){
   if(f.edits&&f.edits.length){
-    return f.edits.map((e,k)=>`
-      <div class="dlabel">change ${k+1} of ${f.edits.length}</div>
-      <div class="dblock">
-        ${e.old?e.old.split('\n').map(l=>`<div class="dline del">- ${esc(l)}</div>`).join(''):''}
-        ${e.new?e.new.split('\n').map(l=>`<div class="dline add">+ ${esc(l)}</div>`).join(''):''}
-      </div>`).join('');
+    return f.edits.map((e,k)=>{
+      const o=(e.old||'').split('\n'),n=(e.new||'').split('\n');
+      let body;
+      if(e.old&&e.new&&o.length===1&&n.length===1){
+        const [ha,hb]=hlPair(e.old,e.new);
+        body=`<div class="dline del">- ${ha}</div><div class="dline add">+ ${hb}</div>`;
+      }else{
+        body=(e.old?o.map(l=>`<div class="dline del">- ${esc(l)}</div>`).join(''):'')+
+             (e.new?n.map(l=>`<div class="dline add">+ ${esc(l)}</div>`).join(''):'');
+      }
+      return `<div class="dlabel">change ${k+1} of ${f.edits.length}</div><div class="dblock">${body}</div>`;
+    }).join('');
   }
   if(f.before_sample!==undefined&&f.after_sample!==undefined){
     const d=lineDiff(f.before_sample,f.after_sample);
-    if(d)return `<div class="dblock">${d.map(([t,l])=>t==='skip'?`<div class="dline ctx">${esc(l)}</div>`:`<div class="dline ${t}">${t==='add'?'+':t==='del'?'-':' '} ${esc(l)}</div>`).join('')}</div>`;
-    return `<div class="dlabel">before</div><div class="dblock">${f.before_sample.split('\n').slice(0,40).map(l=>`<div class="dline del">- ${esc(l)}</div>`).join('')}</div>
-            <div class="dlabel">after</div><div class="dblock">${f.after_sample.split('\n').slice(0,40).map(l=>`<div class="dline add">+ ${esc(l)}</div>`).join('')}</div>`;
+    if(d)return capBlock(diffRows(d));
+    return `<div class="dlabel">before</div>${capBlock(f.before_sample.split('\n').map(l=>`<div class="dline del">- ${esc(l)}</div>`))}
+            <div class="dlabel">after</div>${capBlock(f.after_sample.split('\n').map(l=>`<div class="dline add">+ ${esc(l)}</div>`))}`;
   }
-  if(f.after_sample!==undefined)return `<div class="dlabel">new file</div><div class="dblock">${f.after_sample.split('\n').slice(0,60).map(l=>`<div class="dline add">+ ${esc(l)}</div>`).join('')}</div>`;
+  if(f.after_sample!==undefined)return `<div class="dlabel">new file</div>${capBlock(f.after_sample.split('\n').map(l=>`<div class="dline add">+ ${esc(l)}</div>`))}`;
   return '<div class="dim">No content captured for this change.</div>';
 }
 
@@ -659,7 +813,14 @@ function renderReceipts(){
 
 document.addEventListener('keydown',(e)=>{
   const typing=document.activeElement&&['INPUT','TEXTAREA'].includes(document.activeElement.tagName);
-  if(e.key==='Escape'){$('helpmodal').classList.remove('show');$('usesmodal').classList.remove('show');closeFlag();if(tourActive)endTour();if(typing)document.activeElement.blur();return;}
+  if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();$('palette').classList.contains('show')?closePalette():openPalette();return;}
+  if(e.key==='Escape'){$('helpmodal').classList.remove('show');$('usesmodal').classList.remove('show');closePalette();closeSettings();closeFlag();if(tourActive)endTour();if(typing)document.activeElement.blur();return;}
+  if($('palette').classList.contains('show')){
+    if(e.key==='ArrowDown'){e.preventDefault();palIdx++;renderPal();return;}
+    if(e.key==='ArrowUp'){e.preventDefault();palIdx=Math.max(0,palIdx-1);renderPal();return;}
+    if(e.key==='Enter'){e.preventDefault();runPal();return;}
+    return;
+  }
   if(typing)return;
   if(e.key==='?'){toggleHelp();return;}
   if(e.key==='u'){toggleUses();return;}
@@ -671,6 +832,12 @@ document.addEventListener('keydown',(e)=>{
   else if(e.key==='k'){select(v[Math.max(idx-1,0)].session);}
   else if(e.key==='a'&&selected){const c=v[idx];review(selected,c.review==='approved'?'pending':'approved');}
   else if(e.key==='f'&&selected){const c=v[idx];c.review==='flagged'?review(selected,'pending'):openFlag(selected);}
+  else if(e.key==='Enter'&&selected&&idx>=0){
+    // triage mode: approve and advance to the next unreviewed card
+    const next=v.find((c,i2)=>i2>idx&&c.review!=='approved')||v.find((c,i2)=>i2!==idx&&c.review!=='approved');
+    review(selected,'approved');
+    if(next)selected=next.session;
+  }
 });
 
 // ── Guided walkthrough ─────────────────────────────────────────────
@@ -733,6 +900,152 @@ function tourStep(i){
 }
 let tourAutoChecked=false;
 
+// ── theme ───────────────────────────────────────────────────────────
+if(localStorage.getItem('foreman_theme')==='light')document.documentElement.dataset.theme='light';
+function toggleTheme(){
+  const light=document.documentElement.dataset.theme==='light';
+  if(light){delete document.documentElement.dataset.theme;localStorage.setItem('foreman_theme','dark');}
+  else{document.documentElement.dataset.theme='light';localStorage.setItem('foreman_theme','light');}
+  toast(light?'🌙 Dark theme':'☀️ Light theme');
+}
+
+// ── config cache (settings panel + jira checkbox) ───────────────────
+let cfgCache=null,cfgMeta=null;
+async function loadCfg(){try{cfgMeta=await fetch('/api/config').then(r=>r.json());cfgCache=cfgMeta.config;}catch(e){/* old server */}}
+loadCfg();
+
+// ── favicon badge: needs-review count in the tab icon ───────────────
+let lastFav=-1;
+function updateFavicon(n){
+  if(n===lastFav)return;lastFav=n;
+  const cv=document.createElement('canvas');cv.width=cv.height=64;
+  const x=cv.getContext('2d');
+  x.fillStyle='#0b0e14';x.strokeStyle='#232a3b';x.lineWidth=3;
+  x.beginPath();x.roundRect(1.5,1.5,61,61,14);x.fill();x.stroke();
+  x.textAlign='center';x.textBaseline='middle';
+  if(n>0){
+    x.font='800 30px Segoe UI,Arial';
+    x.fillStyle='#fff';x.fillText('F',15,36);
+    x.fillStyle='#5b8cff';x.fillText('M',38,36);
+    x.fillStyle='#ff4d5e';x.beginPath();x.arc(47,17,15,0,7);x.fill();
+    x.fillStyle='#fff';x.font='800 21px Segoe UI,Arial';x.fillText(n>9?'9+':String(n),47,18.5);
+  }else{
+    x.font='800 36px Segoe UI,Arial';
+    x.fillStyle='#fff';x.fillText('F',20,35);
+    x.fillStyle='#5b8cff';x.fillText('M',45,35);
+  }
+  document.querySelector('link[rel=icon]').href=cv.toDataURL('image/png');
+}
+
+// ── command palette (Ctrl+K) ────────────────────────────────────────
+let palIdx=0;
+function openPalette(){$('palette').classList.add('show');$('palinput').value='';palIdx=0;renderPal();setTimeout(()=>$('palinput').focus(),40);}
+function closePalette(){$('palette').classList.remove('show');}
+function palActions(){
+  const v=visible(),pending=v.filter(c=>c.review!=='approved');
+  const cur=cards.find(c=>c.session===selected);
+  const a=[];
+  if(cur)a.push(
+    {ico:'✓',label:`Approve <b>${esc(base(cur.cwd))}</b>`,hint:'a',run:()=>review(cur.session,'approved')},
+    {ico:'⚑',label:`Flag <b>${esc(base(cur.cwd))}</b> with a note`,hint:'f',run:()=>openFlag(cur.session)},
+    {ico:'📋',label:'Copy PR evidence comment',run:()=>copyPrComment(cur.session)});
+  if(pending.length>1)a.push({ico:'✓✓',label:`Approve all visible (<b>${pending.length}</b> sessions)`,run:async()=>{for(const c of pending)await fetch('/api/review',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session:c.session,status:'approved'})});toast(`✓ Approved ${pending.length} sessions`);refresh();}});
+  a.push(
+    {ico:'📥',label:'Go to Inbox',run:()=>showTab('inbox')},
+    {ico:'🧾',label:'Go to MCP Receipts',run:()=>showTab('receipts')},
+    {ico:'📊',label:'Go to Insights',run:()=>showTab('insights')},
+    {ico:'🔎',label:'Filter: Needs review',run:()=>{filter='review';showTab('inbox');renderList();}},
+    {ico:'●',label:'Filter: Running',run:()=>{filter='running';showTab('inbox');renderList();}},
+    {ico:'⚑',label:'Filter: Flagged',run:()=>{filter='flagged';showTab('inbox');renderList();}},
+    {ico:'⚡',label:`Sort by ${sortMode==='risk'?'latest activity':'risk'}`,run:()=>setSort(sortMode==='risk'?'activity':'risk')},
+    {ico:document.documentElement.dataset.theme==='light'?'🌙':'☀️',label:`Switch to ${document.documentElement.dataset.theme==='light'?'dark':'light'} theme`,run:toggleTheme},
+    {ico:'⬅',label:'Collapse / expand the session list',run:()=>$('listwrap').classList.toggle('collapsed')},
+    {ico:'⚙',label:'Settings',run:openSettings},
+    {ico:'⚡',label:'Use cases — everything Foreman does',hint:'u',run:toggleUses},
+    {ico:'▶',label:'Take the 60-second tour',run:startTour},
+    {ico:'?',label:'Help & keyboard shortcuts',hint:'?',run:toggleHelp});
+  for(const c of v)a.push({ico:'→',label:`<b>${esc(base(c.cwd))}</b> · ${c.level} ${c.score} · ${esc(AGENT_LABEL[c.agent]||c.agent)} · ${ago(c.last_activity||c.started)}`,session:c.session,run:()=>{showTab('inbox');select(c.session);}});
+  return a;
+}
+function palFiltered(){
+  const q=($('palinput').value||'').toLowerCase();
+  return palActions().filter(a=>!q||a.label.toLowerCase().replace(/<[^>]+>/g,'').includes(q));
+}
+function renderPal(){
+  const items=palFiltered();
+  if(palIdx>=items.length)palIdx=Math.max(0,items.length-1);
+  $('pallist').innerHTML=items.map((a,i)=>`<div class="palitem ${i===palIdx?'sel':''}" onclick="runPal(${i})" onmousemove="if(palIdx!==${i}){palIdx=${i};renderPal();}"><span class="pico">${a.ico}</span><span>${a.label}</span>${a.hint?`<span class="phint">${a.hint}</span>`:''}</div>`).join('')||'<div class="palitem">No matches.</div>';
+  const sel=$('pallist').children[palIdx];if(sel)sel.scrollIntoView({block:'nearest'});
+}
+function runPal(i){const items=palFiltered();const a=items[i??palIdx];if(!a)return;closePalette();a.run();}
+
+// ── insights ────────────────────────────────────────────────────────
+function renderInsights(){
+  const real=cards.filter(c=>!c.session.startsWith('demo-'));
+  const set=real.length?real:cards;
+  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(13-i));return d;});
+  const key=d=>d.toISOString().slice(0,10);
+  const byDay=Object.fromEntries(days.map(d=>[key(d),0]));
+  for(const c of set){const k=(c.started||'').slice(0,10);if(k in byDay)byDay[k]++;}
+  const max=Math.max(1,...Object.values(byDay));
+  const claimed=set.filter(c=>c.claims.length);
+  const verified=claimed.filter(c=>c.verified_claims).length;
+  const ruleCnt={};for(const c of set)for(const f of c.findings)ruleCnt[f.rule]=(ruleCnt[f.rule]||0)+1;
+  const rules=Object.entries(ruleCnt).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const rmax=Math.max(1,...rules.map(r=>r[1]));
+  const repoCnt={};for(const c of set){const r=base(c.cwd);repoCnt[r]=(repoCnt[r]||0)+1;}
+  const repos=Object.entries(repoCnt).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  $('insights').innerHTML=`
+    <h2>Insights</h2>
+    <div class="sub">how your AI workforce is behaving — ${set.length} session(s)${real.length?'':' (demo data)'}</div>
+    <div class="igrid">
+      <div class="icard"><b>${set.length}</b><span>sessions</span></div>
+      <div class="icard"><b style="color:${set.filter(c=>c.review!=='approved').length?'var(--high)':'var(--low)'}">${set.filter(c=>c.review!=='approved').length}</b><span>need review</span></div>
+      <div class="icard"><b>${claimed.length?Math.round(verified/claimed.length*100)+'%':'—'}</b><span>claims verified</span></div>
+      <div class="icard"><b style="color:${set.filter(c=>c.level==='critical').length?'var(--critical)':'var(--low)'}">${set.filter(c=>c.level==='critical').length}</b><span>critical sessions</span></div>
+      <div class="icard"><b>${set.reduce((n,c)=>n+c.files.length,0)}</b><span>files touched</span></div>
+    </div>
+    <section><h3>Sessions per day — last 14 days</h3>
+      <div class="spark">${days.map(d=>{const n=byDay[key(d)];return `<div class="bar" style="height:${Math.max(4,n/max*100)}%"${n?` title="${key(d)}: ${n}"`:''}>${n?`<span>${n}</span>`:''}</div>`;}).join('')}</div>
+      <div class="sparklbl">${days.map(d=>`<i>${d.getDate()}</i>`).join('')}</div>
+    </section>
+    ${rules.length?`<section><h3>What the rules are catching</h3>${rules.map(([r,n])=>`<div class="rbar"><span class="rname">${esc(r)}</span><div class="rtrack"><div class="rfill" style="width:${n/rmax*100}%"></div></div><span class="rn">${n}</span></div>`).join('')}</section>`:''}
+    ${repos.length?`<section><h3>Busiest repos</h3>${repos.map(([r,n])=>`<div class="rbar"><span class="rname">${esc(r)}</span><div class="rtrack"><div class="rfill" style="width:${n/repos[0][1]*100}%"></div></div><span class="rn">${n}</span></div>`).join('')}</section>`:''}`;
+}
+
+// ── settings panel ──────────────────────────────────────────────────
+async function openSettings(){
+  await loadCfg();
+  if(!cfgMeta){toast('Settings need the current server — restart foreman ui');return;}
+  const c=cfgCache;
+  $('cfgpath').textContent=cfgMeta.path;
+  $('s_ignore').value=(c.ignore||[]).join('\n');
+  $('s_rules').innerHTML=cfgMeta.known_rules.map(r=>`<label class="rulechk"><input type="checkbox" data-rule="${r}" ${(c.disable_rules||[]).includes(r)?'':'checked'}> ${r}</label>`).join('');
+  $('s_mrl').value=c.mass_rewrite_min_lines;$('s_mrr').value=c.mass_rewrite_ratio;
+  $('s_ncmd').value=c.notify_command||'';$('s_nweb').value=c.notify_webhook||'';
+  $('s_jurl').value=c.jira?.base_url||'';$('s_jmail').value=c.jira?.email||'';
+  $('s_jproj').value=c.jira?.project||'';$('s_jenv').value=c.jira?.token_env||'';
+  $('s_jtok').textContent=cfgMeta.jira_token_present?'✓ token found in env':'token env var not set';
+  $('setmodal').classList.add('show');
+}
+function closeSettings(){$('setmodal').classList.remove('show');}
+async function saveSettings(){
+  const disabled=[...$('s_rules').querySelectorAll('input')].filter(i=>!i.checked).map(i=>i.dataset.rule);
+  const jira=$('s_jurl').value.trim()?{base_url:$('s_jurl').value.trim(),email:$('s_jmail').value.trim(),project:$('s_jproj').value.trim(),...($('s_jenv').value.trim()?{token_env:$('s_jenv').value.trim()}:{})}:null;
+  const body={
+    ignore:$('s_ignore').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    disable_rules:disabled,
+    mass_rewrite_min_lines:Number($('s_mrl').value)||50,
+    mass_rewrite_ratio:Number($('s_mrr').value)||0.4,
+    notify_command:$('s_ncmd').value.trim(),
+    notify_webhook:$('s_nweb').value.trim(),
+    jira,
+  };
+  const r=await fetch('/api/config',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}).then(x=>x.json()).catch(e=>({error:String(e)}));
+  if(r.ok){cfgCache=r.config;closeSettings();toast('⚙ Settings saved');refresh();}
+  else toast('Save failed: '+(r.error||'unknown'));
+}
+
 async function refresh(){
   if(tourActive)return; // freeze the UI while the walkthrough is pointing at it
   try{
@@ -740,6 +1053,8 @@ async function refresh(){
     cards=c;receipts=r;
     if(!selected&&visible().length)selected=visible()[0].session;
     renderStats();renderList();renderReceipts();
+    updateFavicon(cards.filter(x=>x.review!=='approved').length);
+    if(tab==='insights')renderInsights();
     $('status').textContent='● live';$('status').style.color='var(--low)';
     if(!tourAutoChecked&&cards.length){
       tourAutoChecked=true;

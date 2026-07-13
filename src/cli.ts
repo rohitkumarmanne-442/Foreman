@@ -51,6 +51,8 @@ const HELP = `
   EVERYTHING ELSE
     foreman status               one-screen summary in the terminal
     foreman report [--out f.md]  markdown audit report of all sessions
+    foreman report --sarif [--out f.sarif]
+                                 findings as SARIF → native GitHub PR annotations
     foreman config               show config file path + active settings
     foreman uninstall [--global] remove Foreman hooks from this repo (or user level)
     foreman version              print version
@@ -331,6 +333,13 @@ async function main(): Promise<void> {
   if (cmd === "report") {
     const out = arg("--out");
     const cards = buildCards();
+    if (process.argv.includes("--sarif")) {
+      const { buildSarif } = await import("./sarif.js");
+      const sarif = JSON.stringify(buildSarif(cards.filter((c) => !c.session.startsWith("demo-"))), null, 2);
+      if (out) { fs.writeFileSync(out, sarif, "utf8"); console.log(`✅ SARIF written → ${out} (upload with github/codeql-action/upload-sarif)`); }
+      else console.log(sarif);
+      return;
+    }
     const lines: string[] = [
       `# Foreman audit report — ${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
       "",

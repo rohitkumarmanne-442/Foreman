@@ -1,0 +1,48 @@
+name: "Foreman Gate"
+description: "Block PRs with unreviewed risky AI-agent sessions, and surface Foreman findings as native GitHub code-scanning annotations."
+author: "rohitkumarmanne-442"
+branding:
+  icon: "shield"
+  color: "blue"
+
+inputs:
+  level:
+    description: "Minimum risk level that blocks the merge (critical | high | medium)."
+    required: false
+    default: "high"
+  sarif:
+    description: "Also write a SARIF file of all findings (path, empty to skip)."
+    required: false
+    default: "foreman.sarif"
+
+outputs:
+  sarif:
+    description: "Path of the SARIF file (feed it to github/codeql-action/upload-sarif)."
+    value: ${{ inputs.sarif }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Foreman
+      shell: bash
+      run: npm install -g foremanjs
+
+    - name: Import team review packs
+      shell: bash
+      # .foreman-team/*.json are ed25519-signed session packs committed by
+      # `foreman team sync` on developer machines — the CI journal starts empty.
+      run: |
+        if [ -d .foreman-team ]; then
+          foreman team sync
+        else
+          echo "No .foreman-team/ directory — nothing to gate. Run 'foreman team sync' locally to share sessions."
+        fi
+
+    - name: Export SARIF
+      if: ${{ inputs.sarif != '' }}
+      shell: bash
+      run: foreman report --sarif --out "${{ inputs.sarif }}"
+
+    - name: Gate on unreviewed risk
+      shell: bash
+      run: foreman gate --level "${{ inputs.level }}"

@@ -16,6 +16,30 @@ export interface ForemanConfig {
   mass_rewrite_ratio: number;
   /** Shell command run when a NEW critical card appears (env: FOREMAN_SESSION/LEVEL/SCORE/REPO). */
   notify_command?: string;
+  /** Incoming-webhook URL (Slack / Teams / anything accepting {"text": ...}) — posted on NEW critical cards. */
+  notify_webhook?: string;
+  /** Create a Jira issue when flagging a card (token read from the env var named in token_env). */
+  jira?: { base_url: string; email: string; project: string; token_env?: string };
+}
+
+/** Fields the settings UI may write. Everything else is CLI/file-only. */
+export const EDITABLE_FIELDS = [
+  "ignore", "disable_rules", "mass_rewrite_min_lines", "mass_rewrite_ratio",
+  "notify_command", "notify_webhook", "jira",
+] as const;
+
+export function saveConfig(patch: Partial<ForemanConfig>): ForemanConfig {
+  let current: Record<string, unknown> = {};
+  try { current = JSON.parse(fs.readFileSync(CONFIG_PATH(), "utf8")); } catch { /* fresh file */ }
+  for (const key of EDITABLE_FIELDS) {
+    if (!(key in patch)) continue;
+    const v = (patch as Record<string, unknown>)[key];
+    if (v === undefined || v === null || v === "") delete current[key];
+    else current[key] = v;
+  }
+  fs.mkdirSync(path.dirname(CONFIG_PATH()), { recursive: true });
+  fs.writeFileSync(CONFIG_PATH(), JSON.stringify(current, null, 2), "utf8");
+  return loadConfig(true);
 }
 
 export const DEFAULTS: ForemanConfig = {

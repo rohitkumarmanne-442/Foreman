@@ -211,6 +211,34 @@ foreman gate --level critical   # only block on critical
 
 Drop it in a pre-push hook or CI job: **agent-written changes don't ship until a human approved the sessions that produced them.** It prints exactly which sessions are blocking and ignores demo data.
 
+### GitHub Action + native PR annotations
+
+```yaml
+- uses: rohitkumarmanne-442/foreman@main
+  with:
+    level: high          # what blocks the merge
+    sarif: foreman.sarif # findings as SARIF
+- uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: foreman.sarif
+```
+
+The action imports your repo's `.foreman-team/` packs (see Team mode), fails the build on unreviewed risky sessions, and `foreman report --sarif` turns every finding into a **native GitHub code-scanning annotation** — "AWS key written into evals.py" shows up on the diff itself.
+
+### Slack / Teams / Jira
+
+- **Webhook on critical cards** — paste an incoming-webhook URL into Settings (⚙ in the inbox) or set `notify_webhook` in config; new critical sessions post a summary with findings.
+- **Flag → Jira ticket** — configure `jira` (base URL, email, project, token env var) in Settings; the flag dialog gains an *"Also create a Jira ticket"* checkbox that files the card's evidence as an issue.
+
+### Custom agents (Claude Agent SDK)
+
+Building your own agent? `adapters/claude-agent-sdk/foreman.mjs` gives you a ready-made hooks object — every tool call your agent makes lands in the inbox:
+
+```js
+import { foremanHooks } from "./adapters/claude-agent-sdk/foreman.mjs";
+query({ prompt, options: { hooks: foremanHooks() } });
+```
+
 ## Put the evidence on the PR
 
 Reviewers shouldn't have to take "the agent tested this" on faith. One command turns a session into a PR comment with the receipts — risk score, claims vs evidence, findings, files, verification commands:
@@ -222,6 +250,16 @@ foreman pr --print            # print the markdown — paste it anywhere (GitLab
 ```
 
 The inbox has the same thing as a **📋 PR comment** button on every card. Approved cards say so; flagged cards carry your note. Your PR reviews start from evidence, not vibes.
+
+## Drive it like a product
+
+- **Ctrl+K command palette** — every action and every session, fuzzy-searchable: approve, flag, bulk-approve all visible, jump anywhere, switch theme.
+- **Triage mode** — `Enter` approves the selected card and jumps to the next unreviewed one. Inbox zero like email.
+- **Insights tab** — sessions per day, % of claims verified, which rules fire most, busiest repos.
+- **Settings panel (⚙)** — ignore paths, rule toggles, thresholds, webhook and Jira setup, all without touching JSON.
+- **Live tab badge** — the FM favicon carries your needs-review count; pin the tab and glance.
+- **Search operators** — `rule:secret level:critical repo:checkout agent:cursor` mix with free text.
+- **Timeline & diffs** — newest-first with an "approved up to here" watermark, word-level change highlights, collapsible long diffs. Light theme included.
 
 ## Live in your menu bar
 

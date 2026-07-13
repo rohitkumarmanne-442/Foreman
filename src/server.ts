@@ -10,8 +10,19 @@ import { verifyReceipt, type ReceiptBody } from "./mcp/receipts.js";
 import { toReceiptBody } from "./verifyall.js";
 import { buildPrComment } from "./pr.js";
 import { DEFAULT_PORT, FOREMAN_HOME } from "./paths.js";
-import { loadConfig } from "./config.js";
+import { loadConfig, saveConfig, CONFIG_PATH } from "./config.js";
+import { createJiraIssue } from "./jira.js";
 import type { McpCallData } from "./types.js";
+
+function readBody(req: http.IncomingMessage, cb: (err: string | null, body: string) => void): void {
+  let body = "";
+  let overflow = false;
+  req.on("data", (c) => {
+    body += c;
+    if (body.length > 100_000) { overflow = true; req.destroy(); }
+  });
+  req.on("end", () => cb(overflow ? "overflow" : null, body));
+}
 
 function uiPath(): string {
   const here = new URL(import.meta.url).pathname;
@@ -90,6 +101,41 @@ export function startServer(port = DEFAULT_PORT): http.Server {
           }
         });
         return;
+      } else if (url.pathname === "/api/config" && req.method === "GET") {
+        send(200, JSON.stringify({
+          config: loadConfig(true),
+          path: CONFIG_PATH(),
+          known_rules: ["destructive_command", "mass_rewrite", "secret_in_code", "sensitive_path", "unverified_claims", "failed_verification", "untested_change", "mcp_tool_drift"],
+          jira_token_present: !!process.env[loadConfig().jira?.token_env ?? "JIRA_API_TOKEN"],
+        }));
+      } else if (url.pathname === "/api/config" && req.method === "POST") {
+        readBody(req, (err, body) => {
+          if (err) { send(err === "overflow" ? 413 : 400, JSON.stringify({ error: err })); return; }
+          try {
+            const cfg = saveConfig(JSON.parse(body));
+            send(200, JSON.stringify({ ok: true, config: cfg }));
+          } catch (e) { send(400, JSON.stringify({ error: String(e) })); }
+        });
+        return;
+      } else if (url.pathname === "/api/jira" && req.method === "POST") {
+        readBody(req, (err, body) => {
+          if (err) { send(err === "overflow" ? 413 : 400, JSON.stringify({ error: err })); return; }
+          (async () => {
+            const { session, note } = JSON.parse(body);
+            const card = buildCards().find((c) => c.session === session);
+            if (!card) { send(404, JSON.stringify({ error: "session not found" })); return; }
+            const issue = await createJiraIssue(card, typeof note === "string" ? note : undefined);
+            send(200, JSON.stringify({ ok: true, ...issue }));
+          })().catch((e) => send(502, JSON.stringify({ error: String(e instanceof Error ? e.message : e) })));
+        });
+        return;
+      } else if (url.pathname === "/manifest.json") {
+        send(200, JSON.stringify({
+          name: "Foreman — Review Inbox", short_name: "Foreman", id: "foreman-inbox",
+          start_url: "/", display: "standalone", background_color: "#070a12", theme_color: "#0d1220",
+          icons: [{ src: "/mascot.png", sizes: "460x626", type: "image/png", purpose: "any" }],
+          description: "The review inbox for your AI workforce.",
+        }), "application/manifest+json");
       } else if (url.pathname === "/api/health") {
         send(200, JSON.stringify({ ok: true, name: "foreman" }));
       } else {
@@ -123,25 +169,40 @@ function startNotifier(): void {
 
   setInterval(() => {
     try {
-      const cmd = loadConfig(true).notify_command;
-      if (!cmd) return;
+      const cfg = loadConfig(true);
+      if (!cfg.notify_command && !cfg.notify_webhook) return;
       for (const c of buildCards()) {
         if (c.level !== "critical" || c.review === "approved" || notified[c.session]) continue;
         if (c.session.startsWith("demo-")) continue;
         notified[c.session] = true;
         fs.writeFileSync(notifiedPath, JSON.stringify(notified), "utf8");
-        spawn(cmd, {
-          shell: true,
-          stdio: "ignore",
-          detached: true,
-          env: {
-            ...process.env,
-            FOREMAN_SESSION: c.session,
-            FOREMAN_LEVEL: c.level,
-            FOREMAN_SCORE: String(c.score),
-            FOREMAN_REPO: c.cwd,
-          },
-        }).unref();
+        if (cfg.notify_command) {
+          spawn(cfg.notify_command, {
+            shell: true,
+            stdio: "ignore",
+            detached: true,
+            env: {
+              ...process.env,
+              FOREMAN_SESSION: c.session,
+              FOREMAN_LEVEL: c.level,
+              FOREMAN_SCORE: String(c.score),
+              FOREMAN_REPO: c.cwd,
+            },
+          }).unref();
+        }
+        if (cfg.notify_webhook) {
+          const repo = c.cwd.split(/[\\/]/).pop() || c.cwd;
+          const top = c.findings.slice(0, 3).map((f) => `• ${f.rule}: ${f.detail.slice(0, 120)}`).join("\n");
+          // {"text": ...} is the shape Slack and Teams incoming webhooks both accept
+          fetch(cfg.notify_webhook, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              text: `🧑‍🏭 Foreman: CRITICAL ${c.score}/100 agent session in *${repo}* (${c.agent})\n${top}\nReview: http://127.0.0.1:${loadConfig().port}/`,
+              foreman: { session: c.session, level: c.level, score: c.score, repo: c.cwd, findings: c.findings },
+            }),
+          }).catch(() => { /* webhook down must never take the inbox down */ });
+        }
       }
     } catch { /* notifier must never take the inbox down */ }
   }, 15000).unref();

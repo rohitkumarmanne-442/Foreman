@@ -743,3 +743,74 @@ test("timeline: chronological per-event feed with diffs", async () => {
   card = buildCards().find((c) => c.session === session);
   assert.equal(card!.open, true, "running again once new work lands after the Stop");
 });
+
+test("sarif: findings become code-scanning results", async () => {
+  const { buildCards } = await import("../cards.js");
+  const { buildSarif } = await import("../sarif.js");
+  const sarif = buildSarif(buildCards()) as any;
+  assert.equal(sarif.version, "2.1.0");
+  const run = sarif.runs[0];
+  assert.ok(run.results.length > 0, "has results");
+  assert.ok(run.tool.driver.rules.some((r: any) => r.id === "mass_rewrite"), "rule metadata present");
+  const massRewrite = run.results.find((r: any) => r.ruleId === "mass_rewrite");
+  assert.ok(massRewrite, "mass_rewrite result exists");
+  assert.equal(massRewrite.level, "error", "sev4 maps to error");
+  assert.ok(massRewrite.locations[0].physicalLocation.artifactLocation.uri.includes("app.py"), "anchored to the file");
+  assert.ok(massRewrite.partialFingerprints.foremanSession, "fingerprinted for dedupe");
+});
+
+test("config: saveConfig round-trip honors the editable whitelist", async () => {
+  const { saveConfig, loadConfig } = await import("../config.js");
+  const cfg = saveConfig({
+    notify_webhook: "http://127.0.0.1:9/hook",
+    jira: { base_url: "https://x.atlassian.net", email: "a@b.c", project: "QD" },
+    mass_rewrite_min_lines: 80,
+    port: 9999, // NOT editable — must be ignored
+  } as any);
+  assert.equal(cfg.notify_webhook, "http://127.0.0.1:9/hook");
+  assert.equal(cfg.jira?.project, "QD");
+  assert.equal(cfg.mass_rewrite_min_lines, 80);
+  assert.equal(cfg.port, 4517, "port stays default — not settable via the panel");
+  // clearing a field removes it
+  const cleared = saveConfig({ notify_webhook: "" } as any);
+  assert.equal(cleared.notify_webhook, undefined);
+  assert.equal(loadConfig(true).jira?.base_url, "https://x.atlassian.net", "other fields survive");
+  saveConfig({ jira: null, mass_rewrite_min_lines: 50 } as any);
+});
+
+test("jira: flag creates an issue against the configured instance", async () => {
+  const http = await import("node:http");
+  const { saveConfig } = await import("../config.js");
+  const { createJiraIssue } = await import("../jira.js");
+  const { buildCards } = await import("../cards.js");
+
+  let received: any = null;
+  const mock = http.createServer((req, res) => {
+    let b = "";
+    req.on("data", (c) => (b += c));
+    req.on("end", () => {
+      received = { url: req.url, auth: req.headers.authorization, body: JSON.parse(b) };
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ key: "QD-42" }));
+    });
+  });
+  await new Promise<void>((r) => mock.listen(0, "127.0.0.1", () => r()));
+  const port = (mock.address() as any).port;
+
+  saveConfig({ jira: { base_url: `http://127.0.0.1:${port}`, email: "qa@qdev.io", project: "QD" } } as any);
+  const card = buildCards().find((c) => c.session === "test-session-1")!;
+
+  delete process.env.JIRA_API_TOKEN;
+  await assert.rejects(() => createJiraIssue(card, "note"), /JIRA_API_TOKEN/, "missing token is a clear error");
+
+  process.env.JIRA_API_TOKEN = "tok123";
+  const issue = await createJiraIssue(card, "restore app.py");
+  assert.equal(issue.key, "QD-42");
+  assert.ok(issue.url.endsWith("/browse/QD-42"));
+  assert.equal(received.url, "/rest/api/3/issue");
+  assert.ok(received.auth.startsWith("Basic "), "basic auth sent");
+  assert.equal(received.body.fields.project.key, "QD");
+  assert.ok(received.body.fields.summary.includes("CRITICAL"), "summary carries risk");
+  mock.close();
+  saveConfig({ jira: null } as any);
+});
