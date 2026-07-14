@@ -334,7 +334,9 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 | `foreman pr [--pr N] [--session id] [--print]` | post a session-evidence comment on the PR |
 | `foreman tray` | menu-bar/tray inbox with critical-card alerts (Win/macOS/Linux) |
 | `foreman ingest` | journal normalized JSON events from any tool (stdin) |
-| `foreman wrap --name <srv> -- <cmd…>` | attest an MCP server |
+| `foreman wrap --name <srv> -- <cmd…>` | attest a local (stdio) MCP server |
+| `foreman wrap --name <srv> --http <url>` | attest a REMOTE MCP server via a local relay |
+| `foreman scan [--base ref] [--sarif f]` | zero-setup CI: risk-scan a git diff, exit 1 if risky |
 | `foreman trust <srv>` | re-baseline a server's tool definitions |
 | `foreman verify` | verify every signature + chain continuity |
 | `foreman team sync` | exchange signed card packs via the repo |
@@ -457,8 +459,10 @@ Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML fil
 - [x] Slack/Teams webhook on critical cards · flag → **Jira** ticket
 - [x] Command palette (Ctrl+K) · triage mode · Insights · Settings panel · light theme · PWA
 - [x] Approval watermarks — re-review only what changed since you last approved
-- [ ] HTTP/SSE MCP attestation (`foreman wrap` is stdio-only today)
-- [ ] More native adapters as more agents ship hook APIs (each is a thin layer on `foreman ingest`)
+- [x] **HTTP/SSE MCP attestation** — `foreman wrap --name gh --http https://host/mcp` relays remote servers through a local proxy; every call signed + chained, rug pulls detected
+- [x] **Pure-CI mode** — `foreman scan` runs the risk rules straight on a git diff (secrets, sensitive paths, mass deletions); the GitHub Action falls back to it automatically when no team packs exist, so CI catches rogue agent commits even if nobody ever ran `foreman init`
+- [x] False positives dismiss in one click (✕ on any finding, `z` to undo) — the score recalculates so alerts stay trustworthy
+- [ ] More native adapters as more agents ship hook APIs — see [adapters/README.md](adapters/README.md): each is ~50 lines on `foreman ingest`
 
 ## License
 

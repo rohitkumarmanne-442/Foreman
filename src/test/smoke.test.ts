@@ -868,3 +868,79 @@ test("wrapped: stats, share card html, badge", async () => {
   assert.ok(html.includes("prove it"), "tagline present");
   assert.ok(BADGE_MD.includes("img.shields.io"), "badge markdown ready");
 });
+
+test("http wrap: remote MCP calls get signed, chained receipts", async () => {
+  const http = await import("node:http");
+  const { runHttpProxy } = await import("../mcp/httpwrap.js");
+  const { readEvents } = await import("../journal.js");
+
+  const remote = http.createServer((req, res) => {
+    let b = ""; req.on("data", (c) => (b += c));
+    req.on("end", () => {
+      const msg = JSON.parse(b);
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ jsonrpc: "2.0", id: msg.id, result: { ok: true, echo: msg.params?.name } }));
+    });
+  });
+  await new Promise<void>((r) => remote.listen(0, "127.0.0.1", () => r()));
+  const rport = (remote.address() as any).port;
+
+  const { port, server } = await runHttpProxy("remote-gh", `http://127.0.0.1:${rport}/mcp`);
+  const resp = await fetch(`http://127.0.0.1:${port}/`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "create_issue" } }),
+  });
+  const body = (await resp.json()) as any;
+  assert.equal(body.result.echo, "create_issue", "response passes through untouched");
+
+  await new Promise((r) => setTimeout(r, 150));
+  const rec = readEvents().filter((e) => e.kind === "mcp_call" && (e.data as any).server === "remote-gh");
+  assert.equal(rec.length, 1, "one receipt for the tool call");
+  assert.equal((rec[0].data as any).tool, "create_issue");
+  assert.ok((rec[0].data as any).sig, "receipt is signed");
+
+  const { verifyAll } = await import("../verifyall.js");
+  const v = verifyAll();
+  assert.equal(v.sig_broken.length, 0, "all signatures incl. the http receipt verify");
+  assert.equal(v.chain_breaks.length, 0, "chain continuity holds across stdio + http receipts");
+  server.close(); remote.close();
+});
+
+test("scan: pure-CI diff scan catches secrets + mass deletion", async () => {
+  const { execFileSync } = await import("node:child_process");
+  const { scanDiff, scanAsCard } = await import("../scan.js");
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), "fm-scan-"));
+  const g = (...a: string[]) => execFileSync("git", a, { cwd: repo, encoding: "utf8" });
+  g("init", "-q"); g("config", "user.email", "t@t"); g("config", "user.name", "t");
+  fs.writeFileSync(path.join(repo, "big.py"), Array.from({ length: 120 }, (_, i) => `keep ${i}`).join("\n"));
+  g("add", "-A"); g("commit", "-qm", "base");
+  fs.writeFileSync(path.join(repo, "big.py"), "gutted\n");
+  fs.writeFileSync(path.join(repo, "cfg.ts"), 'const key = "sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";\n');
+  g("add", "-A"); g("commit", "-qm", "agent commit");
+
+  const scan = scanDiff("HEAD^", repo);
+  const rules = scan.findings.map((f) => f.rule);
+  assert.ok(rules.includes("mass_rewrite"), `mass deletion caught (${rules})`);
+  assert.ok(rules.includes("secret_in_code"), `secret in added lines caught (${rules})`);
+  assert.ok(scan.score >= 70, "risky diff scores critical");
+  const card = scanAsCard(scan, repo);
+  assert.equal(card.agent, "ci-scan");
+  assert.ok(card.files.some((f) => f.path === "big.py"));
+});
+
+test("dismiss: false positives drop out and the score recalculates", async () => {
+  const { setDismissed } = await import("../reviews.js");
+  const { buildCards } = await import("../cards.js");
+  const session = "test-session-1"; // critical: mass_rewrite + destructive + unverified
+  const before = buildCards().find((c) => c.session === session)!;
+  assert.ok(before.findings.some((f) => f.rule === "unverified_claims"));
+
+  setDismissed(session, "unverified_claims");
+  const after = buildCards().find((c) => c.session === session)!;
+  assert.ok(!after.findings.some((f) => f.rule === "unverified_claims"), "dismissed finding gone");
+  assert.ok(after.score < before.score, `score dropped (${before.score} → ${after.score})`);
+
+  setDismissed(session, "unverified_claims", true); // undo
+  const restored = buildCards().find((c) => c.session === session)!;
+  assert.equal(restored.score, before.score, "undo restores the original score");
+});

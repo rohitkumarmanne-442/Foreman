@@ -1,7 +1,7 @@
 import { readEvents } from "./journal.js";
 import { assessRisk } from "./risk.js";
 import { isVerificationCommand } from "./claims.js";
-import { loadReviews } from "./reviews.js";
+import { loadReviews, loadDismissed } from "./reviews.js";
 import { isIgnored } from "./config.js";
 import type {
   ForemanEvent,
@@ -27,6 +27,8 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
   }
 
   const cards: ReviewCard[] = [];
+  const dismissed = loadDismissed();
+  const WEIGHT = { 4: 40, 3: 25, 2: 10, 1: 5 } as const;
   for (const [session, list] of bySession) {
     list.sort((a, b) => a.ts.localeCompare(b.ts));
     const first = list[0];
@@ -117,9 +119,17 @@ export function buildCards(events?: ForemanEvent[]): ReviewCard[] {
       commands,
       claims: endData.claims ?? [],
       verified_claims: risk.verifiedClaims,
-      findings: risk.findings,
-      score: risk.score,
-      level: risk.level,
+      // dismissed false positives drop out and the score re-derives
+      ...(() => {
+        const kept = risk.findings.filter((f) => !dismissed[`${session}|${f.rule}`]);
+        if (kept.length === risk.findings.length)
+          return { findings: risk.findings, score: risk.score, level: risk.level };
+        const score = Math.min(100, kept.reduce((n, f) => n + WEIGHT[f.severity], 0));
+        return {
+          findings: kept, score,
+          level: (score >= 70 ? "critical" : score >= 40 ? "high" : score >= 15 ? "medium" : "low") as ReviewCard["level"],
+        };
+      })(),
       mcp_calls: all.filter((e) => e.kind === "mcp_call" && e.session === session).length,
       mcp_drifts: sessionDrifts,
       last_message: endData.last_message,

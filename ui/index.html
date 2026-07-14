@@ -480,6 +480,14 @@ async function copyPrComment(session){
   toast('📋 Evidence comment copied — paste it on your PR (or use: foreman pr)');
 }
 function copyCmd(text,btn){navigator.clipboard.writeText(text).then(()=>{toast('Copied: '+text);if(btn)btn.textContent='copied!';setTimeout(()=>{if(btn)btn.textContent='copy'},1500);});}
+let lastDismiss=null;
+async function dismissFinding(session,rule,undo=false){
+  await fetch('/api/dismiss',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({session,rule,undo})});
+  if(!undo){lastDismiss={session,rule};
+    toast(`✕ ${rule} dismissed as a false positive — score recalculated. Press z to undo.`);
+  }else toast('↩ Finding restored.');
+  refresh();
+}
 async function copyInvestigate(session){
   const c=cards.find(x=>x.session===session);if(!c)return;
   const verifs=c.commands.filter(k=>k.verification);
@@ -1000,7 +1008,7 @@ function renderDetail(){
 
 function overviewHtml(c){
   return `
-    ${c.findings.length?`<section id="sec-findings"><h3>Findings</h3>${c.findings.map(f=>`<div class="finding s${f.severity}"><div class="frow"><span class="rule">${esc(f.rule)}</span><span>${esc(f.detail)}</span></div>${WHY[f.rule]?`<div class="why">💡 ${esc(WHY[f.rule])}</div>`:''}</div>`).join('')}</section>`:''}
+    ${c.findings.length?`<section id="sec-findings"><h3>Findings</h3>${c.findings.map(f=>`<div class="finding s${f.severity}"><div class="frow"><span class="rule">${esc(f.rule)}</span><span style="flex:1">${esc(f.detail)}</span><a class="filelink" style="font-size:11px;flex-shrink:0;color:var(--dim)" title="false positive? dismiss it — the risk score recalculates and the alert stays trustworthy" onclick="dismissFinding('${esc(c.session)}','${esc(f.rule)}')">✕ dismiss</a></div>${WHY[f.rule]?`<div class="why">💡 ${esc(WHY[f.rule])}</div>`:''}</div>`).join('')}</section>`:''}
     ${c.claims.length?`<section id="sec-claims"><h3>Claims vs Evidence</h3>${c.claims.map(cl=>`<div class="claim"><span>${c.verified_claims?'✅':'❓'}</span><span>“${esc(cl)}”</span></div>`).join('')}
       <div class="dim" style="font-size:12px;margin-top:4px">${c.verified_claims?'Backed by at least one passing verification command.':'No passing verification command found in this session.'}</div></section>`:''}
     ${c.files.length?`<section id="sec-files"><h3 style="display:flex;align-items:baseline;gap:12px">Files touched (${c.files.length}) — most recent first, click for the diff<a class="filelink" style="margin-left:auto;font-size:11px;text-transform:none;letter-spacing:0" onclick="toggleAllDiffs()">${openDiffs.size?'⤡ collapse all':'⤢ expand all diffs'}</a></h3><table><tr><th>File</th><th>Action</th><th>Lines</th><th>Last edited</th></tr>
@@ -1049,6 +1057,7 @@ document.addEventListener('keydown',(e)=>{
   if(typing)return;
   if(e.key==='?'){toggleHelp();return;}
   if(e.key==='u'){toggleUses();return;}
+  if(e.key==='z'&&lastDismiss){dismissFinding(lastDismiss.session,lastDismiss.rule,true);lastDismiss=null;return;}
   if(e.key==='/'){e.preventDefault();$('search').focus();return;}
   if(tab!=='inbox')return;
   const v=visible();if(!v.length)return;

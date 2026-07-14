@@ -35,14 +35,24 @@ runs:
         if [ -d .foreman-team ]; then
           foreman team sync
         else
-          echo "No .foreman-team/ directory — nothing to gate. Run 'foreman team sync' locally to share sessions."
+          echo "No .foreman-team/ packs — falling back to pure-CI diff scan (no local setup needed)."
         fi
 
-    - name: Export SARIF
-      if: ${{ inputs.sarif != '' }}
+    - name: Gate (team packs) or scan the diff (zero-setup)
       shell: bash
-      run: foreman report --sarif --out "${{ inputs.sarif }}"
-
-    - name: Gate on unreviewed risk
-      shell: bash
-      run: foreman gate --level "${{ inputs.level }}"
+      # Two modes:
+      #  · team mode  — devs run foreman locally + `foreman team sync`; CI blocks
+      #    on sessions no human approved, with full claims/commands evidence.
+      #  · pure CI    — nobody installed anything locally: `foreman scan` runs the
+      #    risk rules straight on the git diff (secrets, sensitive paths, mass
+      #    deletions) and blocks on those. Rogue remote-agent commits still get
+      #    caught.
+      run: |
+        if [ -d .foreman-team ]; then
+          if [ -n "${{ inputs.sarif }}" ]; then foreman report --sarif --out "${{ inputs.sarif }}"; fi
+          foreman gate --level "${{ inputs.level }}"
+        else
+          BASE="origin/${GITHUB_BASE_REF:-main}"
+          git fetch --no-tags --depth=1 origin "${GITHUB_BASE_REF:-main}" || BASE="HEAD^"
+          foreman scan --base "$BASE" --level "${{ inputs.level }}" ${{ inputs.sarif != '' && format('--sarif {0}', inputs.sarif) || '' }}
+        fi

@@ -5,7 +5,7 @@ import { spawn } from "node:child_process";
 import { buildCards } from "./cards.js";
 import { buildTimeline } from "./timeline.js";
 import { readEvents } from "./journal.js";
-import { setReview } from "./reviews.js";
+import { setReview, setDismissed } from "./reviews.js";
 import { verifyReceipt, type ReceiptBody } from "./mcp/receipts.js";
 import { toReceiptBody } from "./verifyall.js";
 import { buildPrComment } from "./pr.js";
@@ -99,6 +99,17 @@ export function startServer(port = DEFAULT_PORT): http.Server {
           } catch (err) {
             send(400, JSON.stringify({ error: String(err) }));
           }
+        });
+        return;
+      } else if (url.pathname === "/api/dismiss" && req.method === "POST") {
+        readBody(req, (err, body) => {
+          if (err) { send(err === "overflow" ? 413 : 400, JSON.stringify({ error: err })); return; }
+          try {
+            const { session, rule, undo } = JSON.parse(body);
+            if (typeof session !== "string" || typeof rule !== "string") { send(400, JSON.stringify({ error: "bad request" })); return; }
+            setDismissed(session, rule, undo === true);
+            send(200, JSON.stringify({ ok: true }));
+          } catch (e) { send(400, JSON.stringify({ error: String(e) })); }
         });
         return;
       } else if (url.pathname === "/api/config" && req.method === "GET") {

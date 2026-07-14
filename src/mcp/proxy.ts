@@ -97,7 +97,7 @@ export function runProxy(serverName: string, command: string[], journal = append
   process.on("SIGTERM", () => child.kill("SIGTERM"));
 }
 
-function recordExchange(
+export function recordExchange(
   server: string,
   runId: string,
   req: { method: string; params: unknown; t0: number },

@@ -19,6 +19,23 @@ export function loadReviews(): Record<string, ReviewEntry> {
   }
 }
 
+const DISMISS_FILE = () => path.join(FOREMAN_HOME, "dismissed.json");
+
+/** False-positive dismissals: "session|rule" → true. Heuristics misfire;
+ * one click removes the finding and re-scores the card, so alerts stay
+ * meaningful instead of training the user to ignore them. */
+export function loadDismissed(): Record<string, true> {
+  try { return JSON.parse(fs.readFileSync(DISMISS_FILE(), "utf8")); } catch { return {}; }
+}
+
+export function setDismissed(session: string, rule: string, undo = false): void {
+  ensureDirs();
+  const all = loadDismissed();
+  const key = `${session}|${rule}`;
+  if (undo) delete all[key]; else all[key] = true;
+  fs.writeFileSync(DISMISS_FILE(), JSON.stringify(all, null, 2), "utf8");
+}
+
 export function setReview(session: string, status: ReviewStatus, note?: string): void {
   ensureDirs();
   const all = loadReviews();

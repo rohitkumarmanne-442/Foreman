@@ -242,6 +242,30 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (cmd === "scan") {
+    const { scanDiff, scanAsCard } = await import("./scan.js");
+    const base = arg("--base") ?? "HEAD^";
+    let scan;
+    try { scan = scanDiff(base); }
+    catch (e) { console.error(`scan failed — is this a git repo with '${base}' resolvable? ${e instanceof Error ? e.message : e}`); process.exit(1); }
+    console.log(`🧑‍🏭 Diff scan vs ${base}: ${scan.files.length} file(s) · ${scan.level.toUpperCase()} ${scan.score}/100`);
+    for (const f of scan.findings) console.log(`   ⚠ [sev ${f.severity}] ${f.rule}: ${f.detail}`);
+    if (!scan.findings.length) console.log(`   ✓ nothing risky in this diff`);
+    const sarifOut = arg("--sarif");
+    if (sarifOut) {
+      const { buildSarif } = await import("./sarif.js");
+      fs.writeFileSync(sarifOut, JSON.stringify(buildSarif([scanAsCard(scan)]), null, 2), "utf8");
+      console.log(`   SARIF → ${sarifOut}`);
+    }
+    const level = (arg("--level") ?? "high").toLowerCase();
+    const rank = { low: 0, medium: 1, high: 2, critical: 3 } as Record<string, number>;
+    if (rank[scan.level] >= (rank[level] ?? 2)) {
+      console.error(`\n❌ Diff is ${scan.level.toUpperCase()} — blocking (threshold: ${level}).`);
+      process.exit(1);
+    }
+    return;
+  }
+
   if (cmd === "backfill") {
     const { backfill, transcriptRoot } = await import("./backfill.js");
     const days = arg("--days") ? Number(arg("--days")) : undefined;
@@ -338,10 +362,20 @@ async function main(): Promise<void> {
 
   if (cmd === "wrap") {
     const name = arg("--name") ?? "unnamed-server";
+    const httpTarget = arg("--http");
+    if (httpTarget) {
+      const { runHttpProxy } = await import("./mcp/httpwrap.js");
+      const { port } = await runHttpProxy(name, httpTarget, Number(arg("--listen-port") ?? 0));
+      console.log(`🧑‍🏭 Attesting remote MCP server "${name}"`);
+      console.log(`   upstream : ${httpTarget}`);
+      console.log(`   point your agent at →  http://127.0.0.1:${port}/`);
+      console.log(`   Every tool call gets a signed, chained receipt (foreman verify). Ctrl+C to stop.`);
+      return; // keeps running
+    }
     const sep = process.argv.indexOf("--");
     const command = sep >= 0 ? process.argv.slice(sep + 1) : [];
     if (!command.length) {
-      console.error("usage: foreman wrap --name <server> -- <command...>");
+      console.error("usage: foreman wrap --name <server> -- <command...>   (or: foreman wrap --name <server> --http <url>)");
       process.exit(1);
     }
     runProxy(name, command);
