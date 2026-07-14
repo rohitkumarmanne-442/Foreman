@@ -154,8 +154,9 @@ foreman badge           # README badge: "AI code — human-reviewed with Foreman
 
 ## Connect your agent
 
-<details>
-<summary><b>Claude Code</b> — hooks, richest data</summary>
+Pick your tool — every path below files the same risk-ranked review cards. Commands run inside your project; add `--global` to cover every repo at once.
+
+### Claude Code — hooks, richest data
 
 ```bash
 cd your-project
@@ -163,10 +164,8 @@ foreman init
 ```
 
 Adds hooks to `.claude/settings.json`. Every new session files a card with diffs, commands, claims — and receives your outstanding flags as context when it starts. `foreman init --global` covers every repo at once; `--agent claude` installs for Claude Code only.
-</details>
 
-<details>
-<summary><b>Cursor</b> — hooks (Cursor 1.7+)</summary>
+### Cursor — hooks (Cursor 1.7+)
 
 ```bash
 cd your-project
@@ -174,10 +173,8 @@ foreman init
 ```
 
 Adds Foreman to `.cursor/hooks.json`: shell commands, file edits, MCP calls, and session ends are captured per the [Cursor hooks API](https://cursor.com/docs/hooks). `--agent cursor` installs for Cursor only.
-</details>
 
-<details>
-<summary><b>Gemini CLI</b> — native hooks, feedback loop included</summary>
+### Gemini CLI — native hooks, feedback loop included
 
 ```bash
 cd your-project
@@ -185,10 +182,8 @@ foreman init
 ```
 
 Adds Foreman to `.gemini/settings.json` per the [Gemini CLI hooks reference](https://github.com/google-gemini/gemini-cli/blob/main/docs/hooks/reference.md): shell commands, file writes/edits, and session ends all become card data — and your outstanding flags are injected as context on `SessionStart`, so Gemini gets the same feedback loop as Claude Code. `--agent gemini` installs for Gemini only.
-</details>
 
-<details>
-<summary><b>OpenCode</b> — native plugin</summary>
+### OpenCode — native plugin
 
 ```bash
 cd your-project
@@ -196,10 +191,8 @@ foreman init
 ```
 
 Drops a plugin into `.opencode/plugins/` (auto-loaded per the [OpenCode plugin API](https://opencode.ai/docs/plugins/)) that translates bash/edit/write events onto `foreman ingest`. `--agent opencode` installs for OpenCode only; `--global` uses `~/.config/opencode/plugins/`.
-</details>
 
-<details>
-<summary><b>Codex CLI, Copilot CLI, aider — any terminal agent</b></summary>
+### Codex CLI · Copilot CLI · aider — any terminal agent
 
 Launch the agent through Foreman. Its TTY is untouched; the card closes when it exits:
 
@@ -214,10 +207,8 @@ foreman run --name aider -- aider
 ```toml
 notify = ["foreman", "hook", "codex"]
 ```
-</details>
 
-<details>
-<summary><b>Windsurf, JetBrains AI, or anything else</b> — universal watch mode</summary>
+### Windsurf · JetBrains AI · anything else — universal watch mode
 
 ```bash
 cd your-project
@@ -225,10 +216,8 @@ foreman watch
 ```
 
 No hooks needed: Foreman diffs the git working tree and journals every change any tool makes. Mass rewrites, secrets, and sensitive paths are all caught; `Ctrl+C` closes the card. Needs the project to be a git repo.
-</details>
 
-<details>
-<summary><b>Your own tool / an agent Foreman doesn't know yet</b> — the 20-line adapter</summary>
+### Your own tool / an agent Foreman doesn't know yet — the 20-line adapter
 
 Anything that can emit JSON is a first-class adapter. Pipe normalized events to `foreman ingest` (one object, an array, or JSONL):
 
@@ -239,10 +228,8 @@ echo '{"agent":"mytool","session":"s1","kind":"end","message":"All tests pass."}
 ```
 
 Three kinds — `command`, `file`, `end` — and Foreman derives everything else: risk scoring, claims-vs-evidence, diffs (send `content` / `edits`), the works. As agents ship native hook APIs, a first-party adapter is just a translation layer onto this schema — PRs welcome.
-</details>
 
-<details>
-<summary><b>MCP servers</b> — signed receipts + rug-pull detection</summary>
+### MCP servers — signed receipts + rug-pull detection
 
 In your agent's MCP config, prefix the server command:
 
@@ -254,7 +241,6 @@ In your agent's MCP config, prefix the server command:
 ```
 
 See [MCP attestation](#mcp-attestation-make-tool-calls-provable) for what you get.
-</details>
 
 Then open the inbox and leave it open — cards appear live:
 
