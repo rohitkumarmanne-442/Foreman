@@ -7,7 +7,7 @@
 *Your agents say "done." Foreman says "prove it."*
 
 [![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs)
-[![tests](https://img.shields.io/badge/tests-26%2F26_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts)
+[![tests](https://img.shields.io/badge/tests-36%2F36_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts)
 [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org)
 [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent)
 [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design)
@@ -43,6 +43,59 @@ The agent above ended its session with *"Everything works and the checkout flow 
 
 Every agent session becomes a **review card**, ranked by risk, in a local inbox you work like email: **✓ approve** what's safe, **⚑ flag** what isn't — with a note the agent reads next session. Inbox zero means every AI change had human eyes on it.
 
+## Quick start
+
+Pick a path — each is one line, needs only **Node 18+**, and keeps everything on your machine.
+
+**① See it work in 30 seconds** — no agent, no signup, no config:
+
+```bash
+npm install -g foremanjs
+foreman demo && foreman ui        # a populated review inbox opens at 127.0.0.1:4517
+```
+
+**② Review your real AI history** — already on Claude Code? Mine every past session:
+
+```bash
+foreman backfill && foreman ui    # your last few months of sessions, risk-ranked
+```
+
+**③ Connect your agent / IDE** — run inside your project; every new session then becomes a review card:
+
+| Your tool | Command |
+|---|---|
+| **Claude Code** | `foreman init --agent claude` |
+| **Cursor** (1.7+) | `foreman init --agent cursor` |
+| **Gemini CLI** | `foreman init --agent gemini` |
+| **OpenCode** | `foreman init --agent opencode` |
+| **All detected agents at once** | `foreman init` &nbsp;·&nbsp; every repo: `foreman init --global` |
+| **Windsurf · JetBrains AI · any editor** | `foreman watch` |
+| **Codex CLI** | `foreman run --name codex -- codex` |
+| **Copilot CLI** | `foreman run --name copilot -- copilot` |
+| **aider** | `foreman run --name aider -- aider` |
+| **MCP servers** (signed receipts) | `foreman wrap --name <srv> -- <cmd>` |
+| **Anything that emits JSON** | pipe events to `foreman ingest` |
+
+Then open the inbox and leave it running — cards appear live: `foreman ui`
+
+**④ Gate your CI** — block PRs with unreviewed risky agent sessions, straight from the [GitHub Marketplace](https://github.com/marketplace/actions/foreman-gate):
+
+```yaml
+# .github/workflows/foreman.yml
+name: Foreman
+on: [pull_request]
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rohitkumarmanne-442/Foreman@v1
+        with:
+          level: high             # block the merge on unreviewed high/critical sessions
+```
+
+No account, no daemon, no telemetry. That's the whole setup.
+
 ## Numbers, honestly
 
 Foreman is an observer, so the only numbers that matter are the ones it costs you and the ones it catches:
@@ -50,7 +103,7 @@ Foreman is an observer, so the only numbers that matter are the ones it costs yo
 - **0 tokens.** Foreman never touches your prompts or your model bill. (One exception, and you opt into it: flagged-session notes are injected as context — that's the point.)
 - **~120 ms per hook event** — median of 15 cold runs on an ordinary Windows laptop, and nearly all of it is Node process startup, not work. Hooks journal and exit; they cannot block, break, or slow your agent's reasoning.
 - **What the rules catch:** 21 destructive-command patterns, 14 secret formats, mass rewrites (both whole-file and single-edit), sensitive paths, failed-then-claimed-success, and MCP tool-definition drift. Every check runs on the record of what the agent *did* — never on vibes.
-- **26/26 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, and a real headless session producing a critical card.
+- **36/36 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, and a real headless session producing a critical card.
 
 No benchmark theater: an observer can't make your agent faster or cheaper. It makes *you* faster — you spend ten minutes on the dangerous session and ten seconds on the README fix, instead of equal time skimming both.
 
@@ -234,7 +287,8 @@ Drop it in a pre-push hook or CI job: **agent-written changes don't ship until a
 ### GitHub Action + native PR annotations
 
 ```yaml
-- uses: rohitkumarmanne-442/foreman@main
+- uses: actions/checkout@v4
+- uses: rohitkumarmanne-442/Foreman@v1
   with:
     level: high          # what blocks the merge
     sarif: foreman.sarif # findings as SARIF
@@ -440,7 +494,7 @@ npm uninstall -g foremanjs   # remove the CLI
 git clone https://github.com/rohitkumarmanne-442/foreman
 cd foreman
 npm install
-npm test        # builds + runs the 31 end-to-end tests
+npm test        # builds + runs the 36 end-to-end tests
 ```
 
 Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML file for the inbox. The test suite spawns real child processes for hooks, drives a fake MCP server through the proxy, git-inits throwaway repos for the watcher, and forges a team pack to prove it gets rejected. PRs welcome; keep that bar.
@@ -466,4 +520,6 @@ Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML fil
 
 ## License
 
-MIT — do whatever you want, just keep the notice.
+Released under the [MIT License](LICENSE). Free to use, modify, and distribute — including commercially — provided the copyright and license notice are retained.
+
+© 2026 Rohit Kumar Manne
