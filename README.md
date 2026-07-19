@@ -20,9 +20,9 @@ Foreman's whole personality fits in its thought cloud: **"Prove it."** Every cla
 
 ## The full tour, in half a minute
 
-![The complete Foreman walkthrough: the risk-ranked inbox, a critical session's findings, the newest-first Timeline, the Ctrl+K command palette, the Insights analytics dashboard with custom date ranges, the live Blast Radius map with a file's evidence panel, signed MCP receipts, flagging with a note the agent will read, and the light theme](assets/demo.gif)
+![The complete Foreman walkthrough: the risk-ranked inbox, a critical session's findings, the newest-first Timeline, the Ctrl+K command palette, the Insights analytics dashboard with custom date ranges, the AI Hotspots worklist, signed MCP receipts, flagging with a note the agent will read, and the light theme](assets/demo.gif)
 
-*Every screen, in order: the **risk-ranked inbox** → a critical card whose agent claimed "everything works" with **zero verification commands** → the **Timeline** replaying each edit newest-first with an approved-up-to-here watermark → the **Ctrl+K palette** (approve, flag, bulk-triage, jump anywhere) → the **Insights dashboard** with date ranges, period-over-period deltas and the agent-trust scoreboard → the **Blast Radius**, a live map of AI's footprint where risky files glow and clicking one opens its evidence → **ed25519-signed MCP receipts** → flagging with a note **the agent reads next session** → light theme. All local, all one HTML file.*
+*Every screen, in order: the **risk-ranked inbox** → a critical card whose agent claimed "everything works" with **zero verification commands** → the **Timeline** replaying each edit newest-first with an approved-up-to-here watermark → the **Ctrl+K palette** (approve, flag, bulk-triage, jump anywhere) → the **Insights dashboard** with date ranges, period-over-period deltas and the agent-trust scoreboard → **AI Hotspots**, a ranked worklist of the files agents touch most where clicking a row opens the session that changed it → **ed25519-signed MCP receipts** → flagging with a note **the agent reads next session** → light theme. All local, all one HTML file.*
 
 ![The Foreman inbox: a critical session with a force push, an 89% file rewrite, and an unverified success claim — with the reviewer's note that gets fed back to the agent](assets/inbox.png)
 
@@ -354,9 +354,9 @@ foreman pr --print            # print the markdown — paste it anywhere (GitLab
 
 The inbox has the same thing as a **📋 PR comment** button on every card. Approved cards say so; flagged cards carry your note. Your PR reviews start from evidence, not vibes.
 
-## The Blast Radius
+## AI Hotspots
 
-Code-graph tools show you what your codebase *is*. Foreman's **🕸 Blast Radius** tab shows what AI is *doing to it* — a live force map where every session is a hub, every touched file is a node **sized by edit intensity and colored by risk**. Critical files glow red, freshly-touched files pulse, and shared files bridge sessions so you see exactly where two agents collided. Click a file for its sessions; click a hub for the card. Ranges from 7 days to all time.
+The Insights tab includes **🔥 AI Hotspots** — a ranked worklist of the files your agents touch most, ordered by what needs your eyes. Each file is a bar (length = edit volume, color = risk) tagged with **⚠ collision** (two agents, same file), **critical / risky**, how many agents touched it, and **● live** when it was just edited. Sort by *Needs attention*, *Most edited*, *Most recent*, or *Riskiest* — and click any row to jump straight to the session that changed it. It answers the only question that matters at a glance: *what do I review first?*
 
 Nobody else has this view, because nobody else has the data: it's drawn entirely from your local journal.
 
