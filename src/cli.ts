@@ -41,8 +41,13 @@ const HELP = `
     foreman brief [path]         print outstanding human flags for a repo (agents read this;
                                  injected automatically into Claude Code sessions)
     foreman gate [--level high]  exit 1 if unapproved risky sessions exist — for CI/pre-push
+    foreman prove [path] [--session id]
+                                 run the repo's own tests/build and attach the real
+                                 pass/fail — turns an unverified claim into evidence
     foreman collisions [--gate]  flag files two agents edited at the same time
                                  (last-writer-wins may have silently dropped changes)
+    foreman shipped              what agents pushed to prod (deploys/publishes/releases/
+                                 pushes to main) — flags anything unreviewed
     foreman pr [--session id] [--pr N] [--print]
                                  post a session-evidence comment on the PR (gh), or --print it
     foreman manifest [--session id] [-o foreman.manifest.json]

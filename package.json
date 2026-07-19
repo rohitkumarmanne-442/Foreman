@@ -1,6 +1,6 @@
 {
   "name": "foremanjs",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Foreman — the review inbox for your AI workforce. Risk-ranked review cards for every agent session, with signed MCP receipts proving what tools actually did.",
   "license": "MIT",
   "type": "module",
@@ -25,7 +25,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rohitkumarmanne-442/foreman.git"
+    "url": "git+https://github.com/rohitkumarmanne-442/Foreman.git"
   },
   "keywords": [
     "ai-agents",

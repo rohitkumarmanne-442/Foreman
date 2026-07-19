@@ -568,8 +568,22 @@
   <div class="modal" style="max-width:840px">
     <button class="close" onclick="toggleUses()">✕</button>
     <h2>⚡ What can Foreman do?</h2>
-    <p>Twelve ways teams put Foreman to work — every one is copy-paste ready.</p>
+    <p>Every way teams put Foreman to work — each is copy-paste ready.</p>
     <div class="ucgrid">
+      <div class="uc"><h5>🚀 The one command</h5><p>Turns on change tracking for <b>every</b> detected agent, MCP tracking, and the inbox — in one go. Run this first; nothing else to configure.</p>
+        <div class="cmd"><span class="c">foreman start</span><button onclick="copyCmd('foreman start',this)">copy</button></div></div>
+      <div class="uc"><h5>🔬 Prove the claim</h5><p>Runs the repo's own tests/build and attaches the real pass/fail, so an "unverified" claim becomes evidence — or is caught lying. Also the 🔬 button on any card.</p>
+        <div class="cmd"><span class="c">foreman prove --session &lt;id&gt;</span><button onclick="copyCmd('foreman prove --session <id>',this)">copy</button></div></div>
+      <div class="uc"><h5>⚡ Adaptive Autopilot</h5><p>Agents that earn a clean track record get their low-risk sessions auto-approved; anything risky still waits for you. Turn it on in Settings ⚙.</p>
+        <div class="cmd"><span class="c">foreman config</span><button onclick="copyCmd('foreman config',this)">copy</button></div></div>
+      <div class="uc"><h5>🚀 Shipped to Prod</h5><p>What agents actually pushed live — deploys, publishes, releases, pushes to main — flagging anything that reached prod without review.</p>
+        <div class="cmd"><span class="c">foreman shipped</span><button onclick="copyCmd('foreman shipped',this)">copy</button></div></div>
+      <div class="uc"><h5>⚠ Collision guard</h5><p>Catches two agents editing the same file while both sessions were live — where last-writer-wins can silently drop the other's changes.</p>
+        <div class="cmd"><span class="c">foreman collisions</span><button onclick="copyCmd('foreman collisions',this)">copy</button></div></div>
+      <div class="uc"><h5>🔏 Signed provenance manifest</h5><p>A portable, ed25519-signed, tamper-evident record of a session for any PR or release. Anyone verifies it offline. Also the 🔏 button on every card.</p>
+        <div class="cmd"><span class="c">foreman manifest -o foreman.manifest.json</span><button onclick="copyCmd('foreman manifest -o foreman.manifest.json',this)">copy</button></div></div>
+      <div class="uc"><h5>🛰 Universal MCP tracking</h5><p>Auto-attest every MCP server already in your agents' configs (Claude/Cursor/Windsurf) — no URL-pasting. Undo any time with <span class="mono">foreman unwire</span>.</p>
+        <div class="cmd"><span class="c">foreman wire</span><button onclick="copyCmd('foreman wire',this)">copy</button></div></div>
       <div class="uc"><h5>🪝 Native hooks — 4 agents</h5><p>Claude Code, Cursor, Gemini CLI &amp; OpenCode. Richest data: commands, claims, diffs — one command wires all four.</p>
         <div class="cmd"><span class="c">foreman init</span><button onclick="copyCmd('foreman init',this)">copy</button></div></div>
       <div class="uc"><h5>🖥️ Supervise any terminal agent</h5><p>Codex, aider, anything that runs in a terminal — Foreman wraps the command and reviews what it changed.</p>
@@ -578,6 +592,8 @@
         <div class="cmd"><span class="c">foreman watch</span><button onclick="copyCmd('foreman watch',this)">copy</button></div></div>
       <div class="uc"><h5>🚦 Gate your CI</h5><p>Exits non-zero while unreviewed risky sessions exist — drop it into any pipeline or pre-push hook to block unreviewed AI work.</p>
         <div class="cmd"><span class="c">foreman gate --level high</span><button onclick="copyCmd('foreman gate --level high',this)">copy</button></div></div>
+      <div class="uc"><h5>🧪 Scan a PR diff (zero setup)</h5><p>No install, no hooks, no journal — risk-scan the diff in CI and emit SARIF so findings annotate the PR itself. Just <span class="mono">npx foremanjs</span>.</p>
+        <div class="cmd"><span class="c">foreman scan --base origin/main --sarif foreman.sarif</span><button onclick="copyCmd('foreman scan --base origin/main --sarif foreman.sarif',this)">copy</button></div></div>
       <div class="uc"><h5>📋 Evidence on your PRs</h5><p>Turn any card into a markdown evidence comment — what ran, what was claimed, what was proven. Also the 📋 button on every card.</p>
         <div class="cmd"><span class="c">foreman pr --print</span><button onclick="copyCmd('foreman pr --print',this)">copy</button></div></div>
       <div class="uc"><h5>🧠 Teach your agents</h5><p>Flag a card with a note — the agent reads it at the start of its next session in that repo and stops repeating the mistake.</p>
@@ -595,7 +611,7 @@
       <div class="uc"><h5>🎬 Explore safely first</h5><p>Seed three example sessions (a destructive rewrite, a leaked secret, a clean verified fix) — remove them with --clear.</p>
         <div class="cmd"><span class="c">foreman demo</span><button onclick="copyCmd('foreman demo',this)">copy</button></div></div>
     </div>
-    <p style="margin-top:14px;font-size:12px">Full reference: <span class="mono">foreman --help</span> · docs in the <a class="filelink" href="https://github.com/rohitkumarmanne-442/foreman#readme" target="_blank" rel="noopener">README</a></p>
+    <p style="margin-top:14px;font-size:12px">Full reference: <span class="mono">foreman --help</span> · docs in the <a class="filelink" href="https://github.com/rohitkumarmanne-442/Foreman#readme" target="_blank" rel="noopener">README</a></p>
   </div>
 </div>
 <div id="helpmodal" onclick="if(event.target===this)toggleHelp()">
@@ -606,16 +622,17 @@
     <p style="margin:12px 0"><button class="btn approve" onclick="startTour()">▶ Take the 60-second tour</button> <span class="dim" style="font-size:12px">— walks you through every option on this screen</span></p>
     <h4>Connect an agent</h4>
     <ul>
-      <li><b style="color:var(--text)">Claude Code / Cursor</b> — run <span class="mono">foreman init</span> in your repo (hooks, richest data: commands, claims, diffs).</li>
-      <li><b style="color:var(--text)">Any other IDE or agent</b> — run <span class="mono">foreman watch</span> in the repo. Universal mode diffs against git and works with everything: Windsurf, Copilot, JetBrains AI…</li>
-      <li><b style="color:var(--text)">MCP servers</b> — prefix the server command with <span class="mono">foreman wrap --name &lt;srv&gt; --</span> for signed receipts + rug-pull detection.</li>
+      <li><b style="color:var(--text)">The one command</b> — run <span class="mono">foreman start</span> in your repo: change tracking for every detected agent + MCP tracking + this inbox, in one go.</li>
+      <li><b style="color:var(--text)">Prefer one agent</b> — <span class="mono">foreman init</span> wires Claude Code / Cursor / Gemini / OpenCode hooks; <span class="mono">foreman watch</span> covers any other IDE (Windsurf, Copilot, JetBrains AI…) via git.</li>
+      <li><b style="color:var(--text)">MCP servers</b> — <span class="mono">foreman wire</span> auto-attests the servers already in your agents' configs; or prefix one with <span class="mono">foreman wrap --name &lt;srv&gt; --</span>. Every call gets a signed receipt + rug-pull detection.</li>
     </ul>
     <h4>Reading a card</h4>
     <ul>
-      <li><b style="color:var(--text)">Claims vs evidence</b> — ⚠️ UNVERIFIED means the agent said "it works" but never ran anything that could prove it.</li>
+      <li><b style="color:var(--text)">Claims vs evidence</b> — ⚠️ UNVERIFIED means the agent said "it works" but never ran anything that could prove it. Hit <b style="color:var(--text)">🔬 Prove it</b> to run the repo's own tests and attach the real result.</li>
       <li><b style="color:var(--text)">Findings</b> — destructive commands, mass rewrites, secrets in code, sensitive paths. Each explains why it matters.</li>
-      <li><b style="color:var(--text)">Files</b> — click any file for the before/after diff.</li>
-      <li><b style="color:var(--text)">Timeline</b> — the sub-tab inside every card replays each edit and command in the order they happened, diffs included. Live for running sessions.</li>
+      <li><b style="color:var(--text)">⚠ Collision</b> — a banner + chip when another agent edited the same file while this session was live (last-writer-wins may have dropped changes).</li>
+      <li><b style="color:var(--text)">Files &amp; Timeline</b> — click any file for the before/after diff; the Timeline sub-tab replays every edit and command in order. Live for running sessions.</li>
+      <li><b style="color:var(--text)">🔏 Signed manifest</b> — export a tamper-evident, ed25519-signed record of the session for your PR or release.</li>
     </ul>
     <h4>Keyboard</h4>
     <div class="krow"><kbd>Ctrl</kbd>+<kbd>K</kbd> command palette — every action, fuzzy-searchable</div>
@@ -1178,9 +1195,10 @@ function onboardHtml(){
   return `<div class="empty"><img class="mascot" src="/mascot.png" alt="Foreman" onerror="this.remove()">
   <div class="onboard">
     <h4>Welcome to Foreman — connect an agent in under a minute</h4>
-    <div class="step"><div class="stepn">1</div><div style="flex:1"><p><b>Claude Code or Cursor?</b> Install hooks in your repo:</p>
-      <div class="cmd">foreman init<button onclick="copyCmd('foreman init',this)">copy</button></div></div></div>
-    <div class="step"><div class="stepn">2</div><div style="flex:1"><p><b>Anything else</b> (Windsurf, Copilot, JetBrains AI, any tool that edits files) — universal mode:</p>
+    <div class="step"><div class="stepn">1</div><div style="flex:1"><p><b>The one command</b> — turns on change tracking for every detected agent, MCP tracking, and this inbox:</p>
+      <div class="cmd">foreman start<button onclick="copyCmd('foreman start',this)">copy</button></div></div></div>
+    <div class="step"><div class="stepn">2</div><div style="flex:1"><p><b>Prefer to wire one agent</b> (or another IDE)? Hooks for Claude/Cursor/Gemini/OpenCode, or universal watch for anything else:</p>
+      <div class="cmd">foreman init<button onclick="copyCmd('foreman init',this)">copy</button></div>
       <div class="cmd">foreman watch<button onclick="copyCmd('foreman watch',this)">copy</button></div></div></div>
     <div class="step"><div class="stepn">3</div><div style="flex:1"><p><b>Just exploring?</b> Seed example sessions:</p>
       <div class="cmd">foreman demo<button onclick="copyCmd('foreman demo',this)">copy</button></div></div></div>

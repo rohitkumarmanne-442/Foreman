@@ -6,7 +6,7 @@
 
 *Your agents say "done." Foreman says "prove it."*
 
-[![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs) [![tests](https://img.shields.io/badge/tests-46%2F46_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts) [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org) [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent) [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design) [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs) [![tests](https://img.shields.io/badge/tests-46%2F46_passing-3ddc97)](https://github.com/rohitkumarmanne-442/Foreman/blob/main/src/test/smoke.test.ts) [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org) [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent) [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design) [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 </div>
 
@@ -528,7 +528,7 @@ npm uninstall -g foremanjs   # remove the CLI
 ## Development
 
 ```bash
-git clone https://github.com/rohitkumarmanne-442/foreman
+git clone https://github.com/rohitkumarmanne-442/Foreman
 cd foreman
 npm install
 npm test        # builds + runs the 36 end-to-end tests

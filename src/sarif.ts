@@ -52,12 +52,12 @@ export function buildSarif(cards: ReviewCard[]): object {
       tool: {
         driver: {
           name: "Foreman",
-          informationUri: "https://github.com/rohitkumarmanne-442/foreman",
+          informationUri: "https://github.com/rohitkumarmanne-442/Foreman",
           rules: [...ruleIds].map((id) => ({
             id,
             shortDescription: { text: id.replace(/_/g, " ") },
             fullDescription: { text: RULE_HELP[id] ?? id },
-            helpUri: "https://github.com/rohitkumarmanne-442/foreman#what-it-catches",
+            helpUri: "https://github.com/rohitkumarmanne-442/Foreman#what-it-catches",
           })),
         },
       },
