@@ -6,7 +6,7 @@
 
 *Your agents say "done." Foreman says "prove it."*
 
-[![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs) [![tests](https://img.shields.io/badge/tests-36%2F36_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts) [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org) [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent) [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design) [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+[![npm](https://img.shields.io/npm/v/foremanjs?color=5b8cff&label=npm)](https://www.npmjs.com/package/foremanjs) [![tests](https://img.shields.io/badge/tests-46%2F46_passing-3ddc97)](https://github.com/rohitkumarmanne-442/foreman/blob/main/src/test/smoke.test.ts) [![node](https://img.shields.io/badge/node-%E2%89%A518-informational)](https://nodejs.org) [![works with](https://img.shields.io/badge/works_with-any_agent-ff9f43)](#connect-your-agent) [![local-first](https://img.shields.io/badge/local--first-no_telemetry-8b93a7)](#local-first-by-design) [![license](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
 </div>
 
@@ -55,7 +55,11 @@ foreman demo && foreman ui        # a populated review inbox opens at 127.0.0.1:
 foreman backfill && foreman ui    # your last few months of sessions, risk-ranked
 ```
 
-**③ Connect your agent / IDE** — run inside your project; every new session then becomes a review card:
+**③ Connect your agent / IDE** — run inside your project; every new session then becomes a review card.
+
+> **The one command:** `foreman start` — run it once in your project and Foreman turns on change tracking for **every** detected agent, MCP tracking, and the inbox, in one go. Nothing else to configure.
+
+Prefer to wire a specific agent (or want it in every repo)? Pick from the table:
 
 | Your tool | Command |
 |---|---|
@@ -98,7 +102,7 @@ Foreman is an observer, so the only numbers that matter are the ones it costs yo
 - **0 tokens.** Foreman never touches your prompts or your model bill. (One exception, and you opt into it: flagged-session notes are injected as context — that's the point.)
 - **~120 ms per hook event** — median of 15 cold runs on an ordinary Windows laptop, and nearly all of it is Node process startup, not work. Hooks journal and exit; they cannot block, break, or slow your agent's reasoning.
 - **What the rules catch:** 21 destructive-command patterns, 14 secret formats, mass rewrites (both whole-file and single-edit), sensitive paths, failed-then-claimed-success, and MCP tool-definition drift. Every check runs on the record of what the agent *did* — never on vibes.
-- **36/36 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, and a real headless session producing a critical card.
+- **46/46 end-to-end tests**, including: a tampered receipt failing signature verification, a reordered journal breaking the hash chain, a forged team pack being rejected, a tampered provenance manifest failing signature *and* content-hash checks, a collision detected between two overlapping sessions, and a real headless session producing a critical card.
 
 No benchmark theater: an observer can't make your agent faster or cheaper. It makes *you* faster — you spend ten minutes on the dangerous session and ten seconds on the README fix, instead of equal time skimming both.
 
@@ -280,6 +284,50 @@ Drop it in a pre-push hook or CI job: **agent-written changes don't ship until a
 
 The action imports your repo's `.foreman-team/` packs (see Team mode), fails the build on unreviewed risky sessions, and `foreman report --sarif` turns every finding into a **native GitHub code-scanning annotation** — "AWS key written into evals.py" shows up on the diff itself.
 
+### Run it purely in CI — zero local install
+
+You don't need anyone to run `foreman init`, keep a daemon alive, or even install the package. There are two tiers, and you can start at the top with **nothing onboarded**:
+
+**Tier 1 — diff scan (no install, no hooks, no journal).** `foreman scan` risk-scores the PR's git diff directly — secrets, sensitive paths, mass deletions, destructive commands — and fails the build on your threshold. This catches a rogue agent commit even if the author never touched Foreman.
+
+```yaml
+# .github/workflows/foreman-scan.yml
+name: Foreman (diff scan)
+on: [pull_request]
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, security-events: write }
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }               # scan needs the base ref
+      - run: npx -y foremanjs scan --base origin/${{ github.base_ref }} --level high --sarif foreman.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: foreman.sarif }     # findings annotate the diff
+```
+
+`npx -y foremanjs` — no global install, no account, no telemetry. Findings land as native code-scanning annotations; the job exits non-zero on high/critical.
+
+**Tier 2 — full evidence (with the journal in the repo).** When your team commits `.foreman-team/` packs (`foreman team sync` — signed, git is the transport), CI gets the whole picture without a server:
+
+```yaml
+- run: npx -y foremanjs gate --level high         # block on unreviewed high/critical sessions
+- run: npx -y foremanjs collisions --gate         # block if two agents raced the same file
+- run: npx -y foremanjs pr --print >> "$GITHUB_STEP_SUMMARY"   # evidence in the run summary
+```
+
+And on a release, mint a signed provenance manifest and attach it to the tag — anyone can verify offline who did the work and whether a human approved it:
+
+```yaml
+# on: release
+- run: npx -y foremanjs manifest --session "$SESSION" -o foreman.manifest.json
+- run: gh release upload "${{ github.ref_name }}" foreman.manifest.json
+# consumers verify with:  npx -y foremanjs verify-manifest foreman.manifest.json
+```
+
+Every step is the same binary you run locally, exits with a real status code, and never phones home.
+
 ### Slack / Teams / Jira
 
 - **Webhook on critical cards** — paste an incoming-webhook URL into Settings (⚙ in the inbox) or set `notify_webhook` in config; new critical sessions post a summary with findings.
@@ -359,6 +407,7 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 
 | Command | What it does |
 |---|---|
+| `foreman start` | **the one command** — turns on change tracking + MCP tracking + the inbox, for every detected agent |
 | `foreman init [--agent claude\|cursor\|gemini\|opencode\|all] [--global]` | install native hooks for this repo (or everywhere) |
 | `foreman ui [--port 4517]` | open the review inbox (reuses a running server, always opens the browser) |
 | `foreman shortcut` | Start Menu + Desktop shortcut (Windows) / app launcher (Linux) |
@@ -366,11 +415,18 @@ Exports your review cards for this repo as an **ed25519-signed pack** and import
 | `foreman watch [path]` | watch a repo continuously — any IDE, any tool |
 | `foreman brief [path]` | print outstanding human flags (agents read this) |
 | `foreman gate [--level high\|critical]` | exit 1 while unapproved risky sessions exist |
+| `foreman collisions [--gate]` | flag files two agents edited at the same time (last-writer-wins may have dropped changes) |
+| `foreman prove [path] [--session id]` | run the repo's own test/build and attach the real pass/fail to the session |
 | `foreman pr [--pr N] [--session id] [--print]` | post a session-evidence comment on the PR |
+| `foreman manifest [--session id] [-o f.json]` | signed, tamper-evident provenance manifest for a PR/release (ed25519) |
+| `foreman verify-manifest <file>` | verify a manifest offline — who did the work, was it approved, untampered |
+| `foreman shipped` | what agents pushed to prod (deploys, publishes, releases, pushes to main) |
 | `foreman tray` | menu-bar/tray inbox with critical-card alerts (Win/macOS/Linux) |
 | `foreman ingest` | journal normalized JSON events from any tool (stdin) |
 | `foreman wrap --name <srv> -- <cmd…>` | attest a local (stdio) MCP server |
 | `foreman wrap --name <srv> --http <url>` | attest a REMOTE MCP server via a local relay |
+| `foreman track [add\|ls\|rm]` | one relay in front of every registered MCP server (local + web) |
+| `foreman wire [--dry-run]` / `foreman unwire` | auto-attest every MCP server in your agents' configs (no URL-pasting) |
 | `foreman scan [--base ref] [--sarif f]` | zero-setup CI: risk-scan a git diff, exit 1 if risky |
 | `foreman trust <srv>` | re-baseline a server's tool definitions |
 | `foreman verify` | verify every signature + chain continuity |
@@ -497,6 +553,12 @@ Zero runtime dependencies — TypeScript, Node's stdlib, and one static HTML fil
 - [x] **HTTP/SSE MCP attestation** — `foreman wrap --name gh --http https://host/mcp` relays remote servers through a local proxy; every call signed + chained, rug pulls detected
 - [x] **Pure-CI mode** — `foreman scan` runs the risk rules straight on a git diff (secrets, sensitive paths, mass deletions); the GitHub Action falls back to it automatically when no team packs exist, so CI catches rogue agent commits even if nobody ever ran `foreman init`
 - [x] False positives dismiss in one click (✕ on any finding, `z` to undo) — the score recalculates so alerts stay trustworthy
+- [x] **One command** — `foreman start` turns on change tracking + MCP tracking + the inbox for every detected agent; `foreman wire` auto-attests the MCP servers already in your agents' configs
+- [x] **Prove it** — `foreman prove` runs the repo's own test/build and attaches the real pass/fail, so an "unverified" claim becomes verified evidence (or is caught lying)
+- [x] **Adaptive Autopilot** — agents that earn a clean track record get their low-risk sessions auto-approved; anything risky still waits for you
+- [x] **Shipped to Prod** — a live view of what agents actually pushed live (deploys, publishes, releases, pushes to main), flagging anything that reached prod unreviewed
+- [x] **Signed provenance manifest** — `foreman manifest` / `verify-manifest`: a portable, ed25519-signed, tamper-evident record of a session for any PR or release
+- [x] **Collision guard** — catches two agents editing the same file during overlapping sessions, where last-writer-wins can silently drop changes
 - [ ] More native adapters as more agents ship hook APIs — see [adapters/README.md](adapters/README.md): each is ~50 lines on `foreman ingest`
 
 ## License
