@@ -26,7 +26,7 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const BRAND = path.join(ROOT, "assets", "brand");
 
 /** What the mascot is thinking. Short enough to read at thumbnail size. */
-const CLOUD_TEXT = "Prove it.";
+const CLOUD_TEXT = "Prove It!";
 
 /** Per-image placement of the cloud text (fractions of image size). */
 const LAYOUT = {
